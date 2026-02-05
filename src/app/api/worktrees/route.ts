@@ -14,6 +14,7 @@ export async function GET() {
     for (const repoConfig of config.repos) {
       const repoName = repoConfig.repoName || repoConfig.fullName!.split('/')[1]
       const barePath = repoConfig.barePath || `${expandPath(config.paths.bareRoot)}/${repoName}.git`
+      const worktreeRoot = expandPath(config.paths.worktreeRoot)
 
       // Determine if this is a bare repo or regular repo
       let gitDir = barePath
@@ -25,7 +26,7 @@ export async function GET() {
         // Bare repo exists, use it
       } catch {
         // Bare repo doesn't exist, try as regular repo
-        const regularRepoPath = barePath.replace('.git$', '')
+        const regularRepoPath = barePath.replace(/\.git$/, '')
         try {
           await fs.access(regularRepoPath)
           // Regular repo exists, use its .git directory
@@ -37,6 +38,7 @@ export async function GET() {
         }
       }
 
+      let foundWorktreesFromGit = false
       try {
         const { stdout } = await execCommand(`git --git-dir "${gitDir}" worktree list --porcelain`)
         const parsedWorktrees = parseWorktreeList(stdout)
@@ -44,6 +46,7 @@ export async function GET() {
         for (const wt of parsedWorktrees) {
           if (wt.bare) continue // Skip the bare repo itself
 
+          foundWorktreesFromGit = true
           const worktree: Worktree = {
             path: wt.path,
             pathRelativeToHome: pathRelativeToHome(wt.path),
@@ -64,6 +67,54 @@ export async function GET() {
           console.warn(`Failed to get worktrees for ${repoName}:`, error)
         }
         // For missing repos, we'll continue silently - they just won't show worktrees until cloned
+      }
+
+      // Only check filesystem if git worktree list didn't find any worktrees
+      // This avoids duplicates when worktrees are properly registered with git
+      if (!foundWorktreesFromGit) {
+        try {
+          const repoWorktreeDir = `${worktreeRoot}/${repoName}`
+          await fs.access(repoWorktreeDir)
+          
+          // Directory exists, list subdirectories as potential worktrees
+          const entries = await fs.readdir(repoWorktreeDir, { withFileTypes: true })
+          
+          for (const entry of entries) {
+            if (!entry.isDirectory()) continue
+            
+            const worktreePath = `${repoWorktreeDir}/${entry.name}`
+            
+            try {
+              // Check if this is a git worktree by looking for .git
+              await fs.access(`${worktreePath}/.git`)
+              
+              // Get the branch name
+              try {
+                const { stdout: branchOutput } = await execCommand('git rev-parse --abbrev-ref HEAD', worktreePath)
+                const branch = branchOutput.trim()
+                
+                const worktree: Worktree = {
+                  path: worktreePath,
+                  pathRelativeToHome: pathRelativeToHome(worktreePath),
+                  branch,
+                  repoName,
+                  repoFullName: repoConfig.fullName
+                }
+                
+                // Get status
+                worktree.status = await getWorktreeStatus(worktreePath)
+                
+                worktrees.push(worktree)
+              } catch (branchError) {
+                console.warn(`Failed to get branch for worktree at ${worktreePath}:`, branchError)
+              }
+            } catch {
+              // Not a git worktree, skip
+            }
+          }
+        } catch {
+          // Worktree directory doesn't exist, that's fine
+        }
       }
     }
 

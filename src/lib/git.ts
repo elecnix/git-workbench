@@ -13,13 +13,14 @@ export async function execCommand(command: string, cwd?: string): Promise<{ stdo
 
 export function expandPath(path: string): string {
   if (path.startsWith('~/')) {
-    return path.replace('~', process.env.HOME || '/home/node')
+    const home = process.env.HOME || process.env.USERPROFILE || '/home/node'
+    return path.replace('~', home)
   }
   return path
 }
 
 export function pathRelativeToHome(path: string): string {
-  const home = process.env.HOME || '/home/node'
+  const home = process.env.HOME || process.env.USERPROFILE || '/home/node'
   if (path.startsWith(home)) {
     return path.replace(home, '~')
   }

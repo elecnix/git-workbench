@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getConfig } from '@/lib/config'
 import { execCommand, expandPath } from '@/lib/git'
 import { CreateWorktreeRequest } from '@/types/worktrees'
+import { promises as fs } from 'fs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,13 +31,48 @@ export async function POST(request: NextRequest) {
 
     const repoName = repoConfig.repoName || repoConfig.fullName!.split('/')[1]
     const barePath = repoConfig.barePath || `${expandPath(config.paths.bareRoot)}/${repoName}.git`
-    const worktreePath = `${expandPath(config.paths.worktreeRoot)}/${repoName}/${worktreeName}`
+    const worktreeRoot = expandPath(config.paths.worktreeRoot)
+    const worktreePath = `${worktreeRoot}/${repoName}/${worktreeName}`
 
     // Determine the ref to use
     const targetRef = ref || repoConfig.defaultBranch || 'main'
 
-    // Create the worktree
-    await execCommand(`git --git-dir "${barePath}" worktree add "${worktreePath}" "${targetRef}"`)
+    // Determine which git directory to use
+    let gitDir = barePath
+    let isBare = true
+
+    // First try as bare repo
+    try {
+      await fs.access(barePath)
+      // Bare repo exists, use it
+    } catch {
+      // Bare repo doesn't exist, try as regular repo
+      const regularRepoPath = barePath.replace(/\.git$/, '')
+      try {
+        await fs.access(regularRepoPath)
+        // Regular repo exists, use its .git directory
+        gitDir = `${regularRepoPath}/.git`
+        isBare = false
+      } catch {
+        // Neither bare nor regular repo exists
+        return NextResponse.json(
+          { error: `Repository not found at ${barePath} or ${regularRepoPath}` },
+          { status: 404 }
+        )
+      }
+    }
+
+    // Create the worktree directory structure if it doesn't exist
+    const repoWorktreeDir = `${worktreeRoot}/${repoName}`
+    try {
+      await fs.mkdir(repoWorktreeDir, { recursive: true })
+    } catch (error) {
+      console.warn(`Failed to create worktree directory: ${error}`)
+    }
+
+    // Create the worktree with a new branch from the starting point
+    // -b creates a new branch named after the worktree, starting from targetRef
+    await execCommand(`git --git-dir "${gitDir}" worktree add -b "${worktreeName}" "${worktreePath}" "${targetRef}"`)
 
     return NextResponse.json({ 
       message: 'Worktree created successfully',

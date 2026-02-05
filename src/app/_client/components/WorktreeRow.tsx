@@ -102,7 +102,7 @@ export const WorktreeRow = memo(function WorktreeRow({
             <div className="flex items-center space-x-4 mt-1">
               <div className="flex items-center space-x-1">
                 <GitBranch className="w-3 h-3 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">{worktree.branch}</span>
+                <span className="text-sm text-muted-foreground font-mono">{worktree.branch}</span>
                 <button
                   onClick={handleCopyBranch}
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -187,6 +187,7 @@ export const WorktreeRow = memo(function WorktreeRow({
             variant="secondary"
             size="sm"
             onClick={handleOpenInWindsurf}
+            title={worktree.path}
           >
             <FolderOpen className="w-4 h-4 mr-2" />
             Open

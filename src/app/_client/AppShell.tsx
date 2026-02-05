@@ -74,16 +74,15 @@ export default function AppShell() {
 
   const handleCreateWorktreeSubmit = useCallback(async (repoName: string, branchName: string, worktreeName: string, startPoint?: string) => {
     try {
-      const response = await fetch('/api/worktrees', {
+      const response = await fetch('/api/worktrees/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          repoName,
-          branchName,
+          repoFullNameOrName: repoName,
           worktreeName,
-          startPoint
+          ref: startPoint
         })
       })
 
