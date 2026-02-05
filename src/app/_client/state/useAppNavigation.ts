@@ -1,57 +1,50 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 
 export type Tab = 'repositories' | 'favorites' | 'worktrees' | 'pull-requests'
 
 export function useAppNavigation() {
+  const router = useRouter()
+  const pathname = usePathname()
   const [activeTab, setActiveTab] = useState<Tab>('favorites')
   const [searchQuery, setSearchQuery] = useState('')
   const isInitialMount = useRef(true)
 
-  // Sync tab from URL after mount (client-side only)
+  // Get tab from pathname
+  const getTabFromPathname = (path: string): Tab => {
+    if (path.includes('/repositories')) return 'repositories'
+    if (path.includes('/favorites')) return 'favorites'
+    if (path.includes('/worktrees')) return 'worktrees'
+    if (path.includes('/pull-requests')) return 'pull-requests'
+    return 'favorites'
+  }
+
+  // Sync tab from pathname after mount (client-side only)
   useEffect(() => {
     if (typeof window !== 'undefined' && isInitialMount.current) {
-      const hash = window.location.hash.slice(1)
-      if (hash === 'repositories' || hash === 'favorites' || hash === 'worktrees' || hash === 'pull-requests') {
-        setActiveTab(hash as Tab)
-      }
+      const tab = getTabFromPathname(pathname)
+      setActiveTab(tab)
       isInitialMount.current = false
     }
-  }, [])
+  }, [pathname])
 
-  // Update URL fragment when tab changes (but not on initial mount)
+  // Update URL when tab changes (but not on initial mount)
   useEffect(() => {
     if (typeof window !== 'undefined' && !isInitialMount.current) {
-      const newHash = `#${activeTab}`
-      window.history.replaceState(null, '', newHash)
+      router.push(`/${activeTab}`, { scroll: false })
     }
-  }, [activeTab])
-
-  // Listen for browser back/forward to sync tab state
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.slice(1)
-      if (hash === 'repositories' || hash === 'favorites' || hash === 'worktrees' || hash === 'pull-requests') {
-        setActiveTab(hash as Tab)
-      } else if (!hash) {
-        setActiveTab('favorites')
-      }
-    }
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('hashchange', handleHashChange)
-      return () => window.removeEventListener('hashchange', handleHashChange)
-    }
-  }, [])
+  }, [activeTab, router])
 
   const jumpToRepo = useCallback((repoName: string) => {
     setActiveTab('worktrees')
     setSearchQuery('')
-    // In a real implementation, we might store the target repo for scrolling
-  }, [])
+    router.push('/worktrees', { scroll: false })
+  }, [router])
 
   const jumpToWorktrees = useCallback(() => {
     setActiveTab('worktrees')
-  }, [])
+    router.push('/worktrees', { scroll: false })
+  }, [router])
 
   return {
     activeTab,

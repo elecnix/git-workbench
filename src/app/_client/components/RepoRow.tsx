@@ -1,7 +1,7 @@
-import React, { memo, useCallback } from 'react'
+import React, { memo, useCallback, useState, useEffect, useRef } from 'react'
 import { Repo } from '@/types/repos'
 import { Button } from './ui/Button'
-import { Star, GitBranchPlus, GitBranch, ExternalLink, Download } from 'lucide-react'
+import { Star, GitBranchPlus, GitBranch, Download, MoreHorizontal, Trash2 } from 'lucide-react'
 import clsx from 'clsx'
 
 interface RepoRowProps {
@@ -10,6 +10,7 @@ interface RepoRowProps {
   onJumpToWorktrees: (repoName: string) => void
   onCreateWorktree: (repoName: string) => void
   onCloneRepo?: (repoName: string) => void
+  onDeleteRepo?: (repoName: string) => void
   needsClone?: boolean
 }
 
@@ -19,8 +20,29 @@ export const RepoRow = memo(function RepoRow({
   onJumpToWorktrees,
   onCreateWorktree,
   onCloneRepo,
+  onDeleteRepo,
   needsClone
 }: RepoRowProps) {
+  const [showMenu, setShowMenu] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false)
+      }
+    }
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMenu])
   const handleToggleFavorite = useCallback(() => {
     onToggleFavorite(repo.repoName)
   }, [repo.repoName, onToggleFavorite])
@@ -39,6 +61,45 @@ export const RepoRow = memo(function RepoRow({
     }
   }, [repo.repoName, onCloneRepo])
 
+  const handleDeleteRepo = useCallback(() => {
+    if (onDeleteRepo) {
+      onDeleteRepo(repo.repoName)
+      setShowDeleteDialog(false)
+      setShowMenu(false)
+    }
+  }, [repo.repoName, onDeleteRepo])
+
+  const handleMenuToggle = useCallback(() => {
+    setShowMenu(!showMenu)
+  }, [showMenu])
+
+  const handleDeleteClick = useCallback(() => {
+    setShowDeleteDialog(true)
+    setShowMenu(false)
+  }, [])
+
+  const handleRepoNameClick = useCallback(() => {
+    if (repo.remoteUrls && repo.remoteUrls.length > 0) {
+      const githubUrl = repo.remoteUrls.find(url => url.includes('github.com'))
+      if (githubUrl) {
+        // Convert SSH URL to HTTPS URL if needed
+        let webUrl = githubUrl
+        if (githubUrl.startsWith('git@github.com:')) {
+          webUrl = githubUrl
+            .replace('git@github.com:', 'https://github.com/')
+            .replace('.git', '')
+        } else if (githubUrl.startsWith('git://github.com/')) {
+          webUrl = githubUrl
+            .replace('git://github.com/', 'https://github.com/')
+            .replace('.git', '')
+        } else if (githubUrl.startsWith('https://github.com/') && githubUrl.endsWith('.git')) {
+          webUrl = githubUrl.replace('.git', '')
+        }
+        window.open(webUrl, '_blank')
+      }
+    }
+  }, [repo.remoteUrls])
+
   return (
     <div className="border-b p-4 hover:bg-muted/50 transition-colors">
       <div className="flex items-center justify-between">
@@ -52,17 +113,17 @@ export const RepoRow = memo(function RepoRow({
           </button>
           
           <div>
-            <h3 className="font-medium">{repo.repoName}</h3>
+            <h3 
+              className={clsx(
+                'font-medium',
+                repo.remoteUrls?.some(url => url.includes('github.com')) && 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer underline'
+              )}
+              onClick={handleRepoNameClick}
+            >
+              {repo.repoName}
+            </h3>
             {repo.fullName && (
               <p className="text-sm text-muted-foreground">{repo.fullName}</p>
-            )}
-            {repo.remoteUrls && repo.remoteUrls.length > 0 && (
-              <div className="flex items-center space-x-2 mt-1">
-                <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
-                  {repo.remoteUrls[0].includes('github.com') ? 'GitHub' : 'Remote'}
-                </span>
-              </div>
             )}
           </div>
         </div>
@@ -107,8 +168,63 @@ export const RepoRow = memo(function RepoRow({
             <GitBranchPlus className="w-4 h-4 mr-1" />
             Create
           </Button>
+
+          {/* Three-dot menu */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={handleMenuToggle}
+              className="p-1 rounded-md hover:bg-muted transition-colors"
+              aria-label="More options"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-background border rounded-md shadow-lg z-50 min-w-[160px]">
+                <button
+                  onClick={handleDeleteClick}
+                  className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete repository</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      {showDeleteDialog && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowDeleteDialog(false)}
+        >
+          <div 
+            className="bg-background border rounded-lg shadow-lg p-6 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-2">Delete Repository</h3>
+            <p className="text-muted-foreground mb-6">
+              Are you sure you want to delete &quot;{repo.repoName}&quot;? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteDialog(false)}
+                className="px-4 py-2 text-sm border rounded-md hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteRepo}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 })

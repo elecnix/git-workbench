@@ -12,6 +12,7 @@ interface RepoListViewProps {
   onJumpToWorktrees: (repoName: string) => void
   onCreateWorktree: (repoName: string) => void
   onCloneRepo?: (repoName: string) => void
+  onDeleteRepo?: (repoName: string) => void
   onAddRepo?: () => void
   searchQuery: string
   onSearchChange: (query: string) => void
@@ -23,6 +24,7 @@ export function RepoListView({
   onJumpToWorktrees,
   onCreateWorktree,
   onCloneRepo,
+  onDeleteRepo,
   onAddRepo,
   searchQuery,
   onSearchChange
@@ -89,6 +91,20 @@ export function RepoListView({
     onSearchChange('')
   }, [onSearchChange])
 
+  const handleDeleteRepo = useCallback(async (repoName: string) => {
+    try {
+      await fetch('/api/repos/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repoName })
+      })
+      // Refresh the repos data to show the deletion
+      mutate()
+    } catch (error) {
+      console.error('Failed to delete repository:', error)
+    }
+  }, [mutate])
+
   if (error) {
     return (
       <div className="p-6 text-center">
@@ -123,7 +139,7 @@ export function RepoListView({
           {onAddRepo && (
           <Button onClick={onAddRepo}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Repo
+            Create
           </Button>
         )}
         </div>
@@ -155,6 +171,7 @@ export function RepoListView({
                 onJumpToWorktrees={onJumpToWorktrees}
                 onCreateWorktree={onCreateWorktree}
                 onCloneRepo={onCloneRepo}
+                onDeleteRepo={onDeleteRepo || handleDeleteRepo}
                 needsClone={repo.needsClone}
               />
             ))}

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { checkGitHubAuth } from '@/lib/github'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const isAuthenticated = await checkGitHubAuth()

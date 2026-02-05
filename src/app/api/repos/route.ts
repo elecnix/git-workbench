@@ -5,6 +5,8 @@ import { getConfig } from '@/lib/config'
 import { execCommand, expandPath } from '@/lib/git'
 import { Repo } from '@/types/repos'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const config = await getConfig()

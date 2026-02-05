@@ -4,6 +4,8 @@ import { execCommand, expandPath } from '@/lib/git'
 import { promises as fs } from 'fs'
 import path from 'path'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
   try {
     const { repoName } = await request.json()

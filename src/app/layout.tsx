@@ -5,7 +5,10 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Repo Worktree UI',
+  title: {
+    default: 'Git',
+    template: 'Git | %s'
+  },
   description: 'Manage git repositories and worktrees',
 }
 

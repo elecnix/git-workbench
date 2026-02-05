@@ -4,6 +4,8 @@ import { execCommand, expandPath } from '@/lib/git'
 import { getWorktreeStatus } from '@/lib/worktree'
 import { DeleteWorktreeRequest } from '@/types/worktrees'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { repo, worktreePath, force }: DeleteWorktreeRequest & { force?: boolean } = await request.json()

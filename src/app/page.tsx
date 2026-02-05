@@ -1,5 +1,5 @@
-import AppShell from '@/app/_client/AppShell'
+import { redirect } from 'next/navigation'
 
 export default function Home() {
-  return <AppShell />
+  redirect('/favorites')
 }

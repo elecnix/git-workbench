@@ -1,4 +1,4 @@
-import { execCommand, expandPath, pathRelativeToHome } from './git'
+import { execCommand, expandPath, pathRelativeToHome, execGitCommandSync } from './git'
 import { WorktreeStatus } from '@/types/worktrees'
 
 export async function getWorktreeStatus(worktreePath: string): Promise<WorktreeStatus> {
@@ -11,31 +11,43 @@ export async function getWorktreeStatus(worktreePath: string): Promise<WorktreeS
   }
 
   try {
-    // Staged files
-    const { stdout: staged } = await execCommand('git diff --cached --name-only | wc -l', worktreePath)
-    status.staged = parseInt(staged.trim()) || 0
+    // Staged files - use git command directly instead of shell pipe
+    try {
+      const { stdout: staged } = await execGitCommandSync(['diff', '--cached', '--name-only'], worktreePath)
+      status.staged = staged.trim() ? staged.trim().split('\n').length : 0
+    } catch (error) {
+      // Silently fail and keep default value
+    }
 
-    // Modified files
-    const { stdout: modified } = await execCommand('git diff --name-only | wc -l', worktreePath)
-    status.modified = parseInt(modified.trim()) || 0
+    // Modified files - use git command directly
+    try {
+      const { stdout: modified } = await execGitCommandSync(['diff', '--name-only'], worktreePath)
+      status.modified = modified.trim() ? modified.trim().split('\n').length : 0
+    } catch (error) {
+      // Silently fail and keep default value
+    }
 
-    // Untracked files
-    const { stdout: untracked } = await execCommand('git ls-files --others --exclude-standard | wc -l', worktreePath)
-    status.untracked = parseInt(untracked.trim()) || 0
+    // Untracked files - use git command directly
+    try {
+      const { stdout: untracked } = await execGitCommandSync(['ls-files', '--others', '--exclude-standard'], worktreePath)
+      status.untracked = untracked.trim() ? untracked.trim().split('\n').length : 0
+    } catch (error) {
+      // Silently fail and keep default value
+    }
 
     // Incoming/outgoing (upstream compare)
     try {
-      const { stdout: upstream } = await execCommand('git rev-list --left-right --count @{u}...HEAD', worktreePath)
+      const { stdout: upstream } = await execGitCommandSync(['rev-list', '--left-right', '--count', '@{u}...HEAD'], worktreePath)
       const [incoming, outgoing] = upstream.trim().split('\t').map(n => parseInt(n) || 0)
       status.incoming = incoming
       status.outgoing = outgoing
     } catch {
-      // No upstream configured, set to 0
+      // No upstream configured or command failed, set to 0
       status.incoming = 0
       status.outgoing = 0
     }
   } catch (error) {
-    console.warn(`Failed to get status for ${worktreePath}:`, error)
+    // If we can't get any status, just return defaults
   }
 
   return status

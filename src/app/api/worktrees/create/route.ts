@@ -4,6 +4,8 @@ import { execCommand, expandPath } from '@/lib/git'
 import { CreateWorktreeRequest } from '@/types/worktrees'
 import { promises as fs } from 'fs'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { repoFullNameOrName, worktreeName, ref }: CreateWorktreeRequest = await request.json()

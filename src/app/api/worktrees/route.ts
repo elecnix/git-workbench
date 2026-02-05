@@ -5,6 +5,8 @@ import { parseWorktreeList, getWorktreeStatus } from '@/lib/worktree'
 import { Worktree } from '@/types/worktrees'
 import { promises as fs } from 'fs'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const config = await getConfig()

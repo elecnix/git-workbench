@@ -3,6 +3,8 @@ import { getConfig } from '@/lib/config'
 import { execCommand, expandPath } from '@/lib/git'
 import { CreateFromMainRequest } from '@/types/worktrees'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { repo, newBranchName, worktreeName }: CreateFromMainRequest = await request.json()

@@ -6,6 +6,7 @@ import { RepoListView } from './components/RepoListView'
 import { WorktreesView } from './components/WorktreesView'
 import { PullRequestsView } from './components/PullRequestsView'
 import { CreateWorktreeModal } from './components/CreateWorktreeModal'
+import { CreateRepoModal } from './components/CreateRepoModal'
 import { ToastContainer } from './components/ui/ToastContainer'
 import { useAppNavigation } from './state/useAppNavigation'
 import { useConfig } from './data/useConfig'
@@ -13,6 +14,7 @@ import { useWorktrees } from './data/useWorktrees'
 import { useRepos } from './data/useRepos'
 import { useToast } from './hooks/useToast'
 import { Worktree } from '@/types/worktrees'
+import { CreateRepoData } from '@/types/config'
 
 export default function AppShell() {
   const { 
@@ -28,6 +30,7 @@ export default function AppShell() {
   const { mutate: mutateRepos } = useRepos()
 
   const [createWorktreeModalOpen, setCreateWorktreeModalOpen] = useState(false)
+  const [createRepoModalOpen, setCreateRepoModalOpen] = useState(false)
   const [selectedRepo, setSelectedRepo] = useState('')
   const [fromBranch, setFromBranch] = useState<string | undefined>()
   const [worktreeFilterRepo, setWorktreeFilterRepo] = useState<string | undefined>()
@@ -134,6 +137,38 @@ export default function AppShell() {
     }
   }, [success, error, mutateConfig, mutateRepos])
 
+  const handleCreateRepo = useCallback(() => {
+    setCreateRepoModalOpen(true)
+  }, [])
+
+  const handleCreateRepoSubmit = useCallback(async (repoData: CreateRepoData) => {
+    try {
+      const response = await fetch('/api/repos/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(repoData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create repository')
+      }
+
+      const result = await response.json()
+      console.log('Repository created successfully:', result)
+      
+      // Refresh repos list to show new repository
+      await mutateRepos()
+      
+      return result
+    } catch (err) {
+      console.error('Failed to create repository:', err)
+      throw err
+    }
+  }, [mutateRepos])
+
   return (
     <div className="h-screen flex flex-col bg-background">
       <header className="bg-muted/30 border-b">
@@ -148,6 +183,7 @@ export default function AppShell() {
             onJumpToWorktrees={handleJumpToWorktrees}
             onCreateWorktree={handleCreateWorktree}
             onCloneRepo={handleCloneRepo}
+            onAddRepo={handleCreateRepo}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />
@@ -160,6 +196,7 @@ export default function AppShell() {
             onJumpToWorktrees={handleJumpToWorktrees}
             onCreateWorktree={handleCreateWorktree}
             onCloneRepo={handleCloneRepo}
+            onAddRepo={handleCreateRepo}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />
@@ -189,7 +226,16 @@ export default function AppShell() {
         )}
       </main>
 
-      {/* Add Repo Modal - simplified for now */}
+      {/* Create Repo Modal */}
+      <CreateRepoModal
+        isOpen={createRepoModalOpen}
+        onClose={() => setCreateRepoModalOpen(false)}
+        onCreateRepo={handleCreateRepoSubmit}
+        onSuccess={success}
+        onError={error}
+        onNavigateToWorktrees={handleJumpToWorktrees}
+      />
+
       {/* Create Worktree Modal */}
       <CreateWorktreeModal
         isOpen={createWorktreeModalOpen}

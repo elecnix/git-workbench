@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getPullRequestsWorker } from '@/lib/pullRequestsWorker'
 
+export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 function formatSseEvent(event: string, data: unknown): string {
