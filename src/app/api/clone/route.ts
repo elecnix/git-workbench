@@ -8,31 +8,58 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    const { repoName } = await request.json()
+    const body = await request.json()
+    const { repoName, url, fullName } = body
 
-    if (!repoName) {
+    // Support both legacy repoName and new URL-based cloning
+    if (!repoName && !url) {
       return NextResponse.json(
-        { error: 'Missing required field: repoName' },
+        { error: 'Missing required field: repoName or url' },
         { status: 400 }
       )
     }
 
     const config = await getConfig()
     
-    // Find the repository configuration
-    const repoConfig = config.repos.find(r => 
-      r.repoName === repoName || r.fullName === repoName
-    )
+    let targetRepoName = repoName
+    let repoConfig: any = null
     
-    if (!repoConfig) {
-      return NextResponse.json(
-        { error: `Repository '${repoName}' not found in configuration` },
-        { status: 404 }
+    if (url) {
+      // URL-based cloning - construct repo config from URL
+      if (!fullName) {
+        return NextResponse.json(
+          { error: 'Missing fullName for URL-based cloning' },
+          { status: 400 }
+        )
+      }
+      
+      // Construct the GitHub HTTPS URL
+      const httpsUrl = `https://github.com/${fullName}.git`
+      
+      repoConfig = {
+        repoName: targetRepoName,
+        fullName,
+        httpsUrl,
+        defaultBranch: 'main', // Will be updated after clone
+        favorite: false
+      }
+    } else {
+      // Legacy repoName-based cloning
+      targetRepoName = repoName
+      repoConfig = config.repos.find(r => 
+        r.repoName === repoName || r.fullName === repoName
       )
+      
+      if (!repoConfig) {
+        return NextResponse.json(
+          { error: `Repository '${repoName}' not found in configuration` },
+          { status: 404 }
+        )
+      }
     }
 
     // Check if repository already exists
-    const targetPath = repoConfig.barePath || `${expandPath(config.paths.bareRoot)}/${repoName}.git`
+    const targetPath = repoConfig.barePath || `${expandPath(config.paths.bareRoot)}/${targetRepoName}.git`
     
     try {
       await fs.access(targetPath)
@@ -51,9 +78,12 @@ export async function POST(request: Request) {
     } else if (repoConfig.sshUrl) {
       // Try to use HTTPS by converting SSH URL to HTTPS if no HTTPS URL is provided
       remoteUrl = repoConfig.sshUrl.replace('git@github.com:', 'https://github.com/')
+    } else if (url) {
+      // For URL-based cloning, use the constructed HTTPS URL
+      remoteUrl = repoConfig.httpsUrl
     } else {
       return NextResponse.json(
-        { error: `No remote URL found for repository '${repoName}'` },
+        { error: `No remote URL found for repository '${targetRepoName}'` },
         { status: 400 }
       )
     }
@@ -76,8 +106,8 @@ export async function POST(request: Request) {
       
       return NextResponse.json({
         success: true,
-        message: `Repository '${repoName}' cloned successfully`,
-        repoName,
+        message: `Repository '${targetRepoName}' cloned successfully`,
+        repoName: targetRepoName,
         targetPath,
         remoteUrl
       })

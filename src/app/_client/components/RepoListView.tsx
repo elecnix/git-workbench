@@ -4,14 +4,14 @@ import { useConfig } from '../data/useConfig'
 import { RepoRow } from './RepoRow'
 import { Input } from './ui/Input'
 import { Button } from './ui/Button'
-import { Plus, Search, X } from 'lucide-react'
+import { Plus, Search, X, Download } from 'lucide-react'
 
 interface RepoListViewProps {
   showFavoritesOnly?: boolean
   onToggleFavorite: (repoName: string) => void
   onJumpToWorktrees: (repoName: string) => void
   onCreateWorktree: (repoName: string) => void
-  onCloneRepo?: (repoName: string) => void
+  onCloneRepo?: () => void
   onDeleteRepo?: (repoName: string) => void
   onJumpToPullRequests?: (repoName: string) => void
   onAddRepo?: () => void
@@ -139,11 +139,18 @@ export function RepoListView({
           </div>
           
           {onAddRepo && (
-          <Button onClick={onAddRepo}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create
-          </Button>
-        )}
+            <Button onClick={onAddRepo} variant="secondary">
+              <Plus className="w-4 h-4 mr-2" />
+              Create
+            </Button>
+          )}
+          
+          {onCloneRepo && (
+            <Button onClick={onCloneRepo}>
+              <Download className="w-4 h-4 mr-2" />
+              Clone
+            </Button>
+          )}
         </div>
       </div>
 
@@ -172,7 +179,6 @@ export function RepoListView({
                 onToggleFavorite={handleToggleFavorite}
                 onJumpToWorktrees={onJumpToWorktrees}
                 onCreateWorktree={onCreateWorktree}
-                onCloneRepo={onCloneRepo}
                 onDeleteRepo={onDeleteRepo || handleDeleteRepo}
                 onJumpToPullRequests={onJumpToPullRequests}
                 needsClone={repo.needsClone}

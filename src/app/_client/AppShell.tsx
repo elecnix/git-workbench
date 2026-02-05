@@ -8,6 +8,7 @@ import { WorktreesView } from './components/WorktreesView'
 import { PullRequestsView } from './components/PullRequestsView'
 import { CreateWorktreeModal } from './components/CreateWorktreeModal'
 import { CreateRepoModal } from './components/CreateRepoModal'
+import { CloneRepoModal } from './components/CloneRepoModal'
 import { ToastContainer } from './components/ui/ToastContainer'
 import { useAppNavigation } from './state/useAppNavigation'
 import { useConfig } from './data/useConfig'
@@ -35,6 +36,7 @@ export function AppShell() {
 
   const [createWorktreeModalOpen, setCreateWorktreeModalOpen] = useState(false)
   const [createRepoModalOpen, setCreateRepoModalOpen] = useState(false)
+  const [cloneRepoModalOpen, setCloneRepoModalOpen] = useState(false)
   const [selectedRepo, setSelectedRepo] = useState('')
   const [fromBranch, setFromBranch] = useState<string | undefined>()
   const [worktreeFilterRepo, setWorktreeFilterRepo] = useState<string | undefined>()
@@ -124,40 +126,12 @@ export function AppShell() {
     }
   }, [success])
 
-  const handleCloneRepo = useCallback(async (repoName: string) => {
-    try {
-      const response = await fetch('/api/clone', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ repoName })
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to clone repository')
-      }
-
-      const result = await response.json()
-      console.log('Repository cloned successfully:', result)
-      
-      // Show success message
-      success(`Repository '${repoName}' cloned successfully!`)
-      
-      // Refresh both config and repos data to update the UI
-      await Promise.all([
-        mutateConfig(),
-        mutateRepos()
-      ])
-    } catch (err) {
-      console.error('Failed to clone repository:', err)
-      error(`Failed to clone repository: ${err instanceof Error ? err.message : 'Unknown error'}`)
-    }
-  }, [success, error, mutateConfig, mutateRepos])
-
   const handleCreateRepo = useCallback(() => {
     setCreateRepoModalOpen(true)
+  }, [])
+
+  const handleCloneRepo = useCallback(() => {
+    setCloneRepoModalOpen(true)
   }, [])
 
   const handleCreateRepoSubmit = useCallback(async (repoData: CreateRepoData) => {
@@ -254,6 +228,15 @@ export function AppShell() {
         isOpen={createRepoModalOpen}
         onClose={() => setCreateRepoModalOpen(false)}
         onCreateRepo={handleCreateRepoSubmit}
+        onSuccess={success}
+        onError={error}
+        onNavigateToWorktrees={handleJumpToWorktrees}
+      />
+
+      {/* Clone Repo Modal */}
+      <CloneRepoModal
+        isOpen={cloneRepoModalOpen}
+        onClose={() => setCloneRepoModalOpen(false)}
         onSuccess={success}
         onError={error}
         onNavigateToWorktrees={handleJumpToWorktrees}
