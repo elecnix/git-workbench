@@ -8,6 +8,7 @@ import { PRNotification } from '@/types/github'
 import clsx from 'clsx'
 
 type GroupBy = 'none' | 'repository' | 'reason'
+type StatusFilter = 'all' | 'ready' | 'draft'
 
 interface PullRequestsViewProps {
   onCreateWorktree?: (repoName: string) => void
@@ -20,6 +21,7 @@ export function PullRequestsView({ onCreateWorktree, onCreateFromBranch, onSucce
   const { pullRequests, isLoading, error, cached, rateLimited, timestamp, retryInSeconds, errorMessage, updateAvailable, refreshPullRequests } = usePullRequests()
   const [searchQuery, setSearchQuery] = useState('')
   const [groupBy, setGroupBy] = useState<GroupBy>('repository')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   const retryLabel = retryInSeconds ?? 10
 
@@ -27,6 +29,13 @@ export function PullRequestsView({ onCreateWorktree, onCreateFromBranch, onSucce
   const filteredAndGroupedPRs = useMemo(() => {
     // First, filter to show only open PRs (not merged or closed)
     let filtered = pullRequests.filter(pr => pr.state === 'open' && !pr.merged)
+
+    // Apply status filter
+    if (statusFilter === 'ready') {
+      filtered = filtered.filter(pr => !pr.draft)
+    } else if (statusFilter === 'draft') {
+      filtered = filtered.filter(pr => pr.draft)
+    }
 
     // Apply search filter
     if (searchQuery) {
@@ -78,7 +87,7 @@ export function PullRequestsView({ onCreateWorktree, onCreateFromBranch, onSucce
       })
 
     return result
-  }, [pullRequests, searchQuery, groupBy])
+  }, [pullRequests, searchQuery, groupBy, statusFilter])
 
   const handleCopyNumber = useCallback((number: number) => {
     if (typeof window !== 'undefined' && navigator.clipboard) {
@@ -151,19 +160,43 @@ export function PullRequestsView({ onCreateWorktree, onCreateFromBranch, onSucce
       <div className="p-4 border-b bg-muted/30">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Pull Requests</h2>
-          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 text-sm">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={clsx(
+                'flex items-center space-x-2 px-3 py-1 rounded-md transition-colors',
+                statusFilter === 'all'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted'
+              )}
+            >
               <GitPullRequest className="w-4 h-4" />
-              <span>{getStats.total} total</span>
-            </div>
-            <div className="flex items-center space-x-2">
+              <span>{getStats.total} all</span>
+            </button>
+            <button
+              onClick={() => setStatusFilter('ready')}
+              className={clsx(
+                'flex items-center space-x-2 px-3 py-1 rounded-md transition-colors',
+                statusFilter === 'ready'
+                  ? 'bg-green-500 text-white'
+                  : 'text-muted-foreground hover:bg-muted'
+              )}
+            >
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
               <span>{getStats.open} ready</span>
-            </div>
-            <div className="flex items-center space-x-2">
+            </button>
+            <button
+              onClick={() => setStatusFilter('draft')}
+              className={clsx(
+                'flex items-center space-x-2 px-3 py-1 rounded-md transition-colors',
+                statusFilter === 'draft'
+                  ? 'bg-gray-500 text-white'
+                  : 'text-muted-foreground hover:bg-muted'
+              )}
+            >
               <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
               <span>{getStats.draft} draft</span>
-            </div>
+            </button>
           </div>
         </div>
 
