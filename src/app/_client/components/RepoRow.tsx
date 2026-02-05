@@ -13,6 +13,7 @@ interface RepoRowProps {
   onCloneRepo?: (repoName: string) => void
   onDeleteRepo?: (repoName: string) => void
   onJumpToPullRequests?: (repoName: string) => void
+  onJumpToBranches?: (repoName: string) => void
   onPublishRepo?: (repoName: string) => void
   needsClone?: boolean
 }
@@ -25,6 +26,7 @@ export const RepoRow = memo(function RepoRow({
   onCloneRepo,
   onDeleteRepo,
   onJumpToPullRequests,
+  onJumpToBranches,
   onPublishRepo,
   needsClone
 }: RepoRowProps) {
@@ -89,6 +91,12 @@ export const RepoRow = memo(function RepoRow({
       onJumpToPullRequests(repo.fullName || repo.repoName)
     }
   }, [repo.fullName, repo.repoName, onJumpToPullRequests])
+
+  const handleJumpToBranches = useCallback(() => {
+    if (onJumpToBranches) {
+      onJumpToBranches(repo.repoName)
+    }
+  }, [repo.repoName, onJumpToBranches])
 
   const handlePublishRepo = useCallback(() => {
     setShowPublishModal(true)
@@ -198,6 +206,15 @@ export const RepoRow = memo(function RepoRow({
           >
             <GitBranch className="w-4 h-4 mr-1" />
             Worktrees
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleJumpToBranches}
+          >
+            <GitBranch className="w-4 h-4 mr-1" />
+            Branches
           </Button>
 
           <Button

@@ -6,6 +6,7 @@ import { TopTabs } from './components/TopTabs'
 import { RepoListView } from './components/RepoListView'
 import { WorktreesView } from './components/WorktreesView'
 import { PullRequestsView } from './components/PullRequestsView'
+import { BranchesView } from './components/BranchesView'
 import { CreateWorktreeModal } from './components/CreateWorktreeModal'
 import { CreateRepoModal } from './components/CreateRepoModal'
 import { CloneRepoModal } from './components/CloneRepoModal'
@@ -30,7 +31,9 @@ export function AppShell() {
     jumpToWorktrees,
     jumpToWorktreesForRepo,
     jumpToPullRequests,
-    jumpToRepoPullRequests
+    jumpToRepoPullRequests,
+    jumpToBranches,
+    jumpToRepoBranches
   } = useAppNavigation()
   
   const { config, mutate: mutateConfig } = useConfig()
@@ -54,6 +57,11 @@ export function AppShell() {
 
   const pullRequestFilterRepo = useMemo(() => {
     if (activeTab !== 'pull-requests') return undefined
+    return searchParams.get('repo') || undefined
+  }, [searchParams, activeTab])
+
+  const branchFilterRepo = useMemo(() => {
+    if (activeTab !== 'branches') return undefined
     return searchParams.get('repo') || undefined
   }, [searchParams, activeTab])
 
@@ -82,7 +90,7 @@ export function AppShell() {
     setCreateWorktreeModalOpen(true)
   }, [])
 
-  const handleTabChange = useCallback((tab: 'repositories' | 'favorites' | 'worktrees' | 'pull-requests') => {
+  const handleTabChange = useCallback((tab: 'repositories' | 'favorites' | 'worktrees' | 'branches' | 'pull-requests') => {
     setActiveTab(tab)
   }, [setActiveTab])
 
@@ -99,6 +107,14 @@ export function AppShell() {
   const handleClearPullRequestFilter = useCallback(() => {
     jumpToPullRequests()
   }, [jumpToPullRequests])
+
+  const handleClearBranchFilter = useCallback(() => {
+    jumpToBranches()
+  }, [jumpToBranches])
+
+  const handleJumpToWorktreeFromBranch = useCallback((repoName: string, branchName: string) => {
+    jumpToWorktreesForRepo(repoName)
+  }, [jumpToWorktreesForRepo])
 
   const handleCreateWorktreeSubmit = useCallback(async (repoName: string, branchName: string, worktreeName: string, startPoint?: string) => {
     try {
@@ -199,6 +215,7 @@ export function AppShell() {
             onCloneRepo={handleCloneRepo}
             onAddRepo={handleCreateRepo}
             onJumpToPullRequests={jumpToRepoPullRequests}
+            onJumpToBranches={jumpToRepoBranches}
             onPublishRepo={handlePublishRepo}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -214,6 +231,7 @@ export function AppShell() {
             onCloneRepo={handleCloneRepo}
             onAddRepo={handleCreateRepo}
             onJumpToPullRequests={jumpToRepoPullRequests}
+            onJumpToBranches={jumpToRepoBranches}
             onPublishRepo={handlePublishRepo}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -229,6 +247,17 @@ export function AppShell() {
             onSuccess={success}
             onError={error}
             onNavigateToPR={handleNavigateToPR}
+          />
+        )}
+
+        {activeTab === 'branches' && (
+          <BranchesView
+            filterRepo={branchFilterRepo}
+            onClearFilter={handleClearBranchFilter}
+            onCreateWorktree={handleCreateFromBranch}
+            onJumpToWorktree={handleJumpToWorktreeFromBranch}
+            onSuccess={success}
+            onError={error}
           />
         )}
 

@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 
 interface FilterBannerProps {
   filterValue?: string
-  filterType: 'pull requests' | 'worktrees'
+  filterType: 'pull requests' | 'worktrees' | 'branches'
   onClearFilter?: () => void
   className?: string
 }

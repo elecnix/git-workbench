@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
-export type Tab = 'repositories' | 'favorites' | 'worktrees' | 'pull-requests'
+export type Tab = 'repositories' | 'favorites' | 'worktrees' | 'branches' | 'pull-requests'
 
 export function useAppNavigation() {
   const router = useRouter()
@@ -13,6 +13,7 @@ export function useAppNavigation() {
   const activeTab = useMemo((): Tab => {
     if (pathname.includes('/repositories')) return 'repositories'
     if (pathname.includes('/worktrees')) return 'worktrees'
+    if (pathname.includes('/branches')) return 'branches'
     if (pathname.includes('/pull-requests')) return 'pull-requests'
     // Default to favorites for both SSR and any unknown paths
     return 'favorites'
@@ -46,6 +47,15 @@ export function useAppNavigation() {
     router.push(`/pull-requests?repo=${encodeURIComponent(repoName)}`, { scroll: false })
   }, [router])
 
+  const jumpToBranches = useCallback(() => {
+    router.push('/branches', { scroll: false })
+  }, [router])
+
+  const jumpToRepoBranches = useCallback((repoName: string) => {
+    setSearchQuery('')
+    router.push(`/branches?repo=${encodeURIComponent(repoName)}`, { scroll: false })
+  }, [router])
+
   return {
     activeTab,
     setActiveTab,
@@ -55,6 +65,8 @@ export function useAppNavigation() {
     jumpToWorktrees,
     jumpToWorktreesForRepo,
     jumpToPullRequests,
-    jumpToRepoPullRequests
+    jumpToRepoPullRequests,
+    jumpToBranches,
+    jumpToRepoBranches
   }
 }

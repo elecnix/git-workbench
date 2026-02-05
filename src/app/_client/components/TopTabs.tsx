@@ -12,6 +12,7 @@ export function TopTabs({ activeTab, onTabChange }: TopTabsProps) {
     { id: 'favorites', label: 'Favorites' },
     { id: 'repositories', label: 'Repositories' },
     { id: 'worktrees', label: 'Worktrees' },
+    { id: 'branches', label: 'Branches' },
     { id: 'pull-requests', label: 'Pull Requests' }
   ]
 
