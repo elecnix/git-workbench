@@ -6,7 +6,7 @@ import { DeleteWorktreeRequest } from '@/types/worktrees'
 
 export async function POST(request: NextRequest) {
   try {
-    const { repo, worktreePath }: DeleteWorktreeRequest = await request.json()
+    const { repo, worktreePath, force }: DeleteWorktreeRequest & { force?: boolean } = await request.json()
 
     if (!repo || !worktreePath) {
       return NextResponse.json(
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const status = await getWorktreeStatus(worktreePath)
     const isClean = status.staged === 0 && status.modified === 0 && status.untracked === 0 && status.outgoing === 0
 
-    if (!isClean) {
+    if (!isClean && !force) {
       return NextResponse.json({
         error: 'Worktree is not clean',
         status,
@@ -44,12 +44,13 @@ export async function POST(request: NextRequest) {
       }, { status: 409 })
     }
 
-    // Delete the worktree
-    await execCommand(`git --git-dir "${barePath}" worktree remove "${worktreePath}"`)
+    // Delete the worktree (use --force flag if worktree is not clean)
+    const forceFlag = !isClean ? '--force' : ''
+    await execCommand(`git --git-dir "${barePath}" worktree remove ${forceFlag} "${worktreePath}"`)
 
     return NextResponse.json({ 
       message: 'Worktree deleted successfully',
-      wasClean: true
+      wasClean: isClean
     })
   } catch (error) {
     console.error('Failed to delete worktree:', error)

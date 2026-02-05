@@ -1,10 +1,11 @@
-import React, { useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useState } from 'react'
 import { useWorktrees } from '../data/useWorktrees'
 import { useRepos } from '../data/useRepos'
 import { WorktreeRow } from './WorktreeRow'
+import { DeleteWorktreeModal } from './DeleteWorktreeModal'
 import { Button } from './ui/Button'
 import { GitBranchPlus } from 'lucide-react'
-import { Worktree } from '@/types/worktrees'
+import { Worktree, WorktreeStatus } from '@/types/worktrees'
 import clsx from 'clsx'
 
 interface WorktreesViewProps {
@@ -19,6 +20,11 @@ interface WorktreesViewProps {
 export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo, onClearFilter, onSuccess, onError }: WorktreesViewProps) {
   const { worktrees, isLoading, error, mutate } = useWorktrees()
   const { repos } = useRepos()
+  
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [pendingDeleteWorktree, setPendingDeleteWorktree] = useState<Worktree | null>(null)
+  const [pendingDeleteStatus, setPendingDeleteStatus] = useState<WorktreeStatus | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Group worktrees by repository and include all repos
   const worktreesByRepo = useMemo(() => {
@@ -83,22 +89,15 @@ export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo
       if (!response.ok) {
         const error = await response.json()
         if (error.requiresConfirmation) {
-          // In a real implementation, show a confirmation dialog
-          const confirmed = window.confirm(
-            `Worktree is not clean:\n` +
-            `Staged: ${error.status.staged}\n` +
-            `Modified: ${error.status.modified}\n` +
-            `Untracked: ${error.status.untracked}\n` +
-            `Outgoing: ${error.status.outgoing}\n\n` +
-            `Delete anyway?`
-          )
-          if (!confirmed) return
+          setPendingDeleteWorktree(worktree)
+          setPendingDeleteStatus(error.status)
+          setDeleteModalOpen(true)
+          return
         } else {
           throw new Error(error.error)
         }
       }
 
-      // Refresh worktrees
       mutate()
       onSuccess?.(`Worktree '${worktree.pathRelativeToHome}' deleted successfully`)
     } catch (error) {
@@ -106,6 +105,39 @@ export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo
       onError?.(`Failed to delete worktree: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }, [mutate, onSuccess, onError])
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!pendingDeleteWorktree) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch('/api/worktrees/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repo: pendingDeleteWorktree.repoFullName || pendingDeleteWorktree.repoName,
+          worktreePath: pendingDeleteWorktree.path,
+          force: true
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete worktree')
+      }
+
+      setDeleteModalOpen(false)
+      setPendingDeleteWorktree(null)
+      setPendingDeleteStatus(null)
+      mutate()
+      onSuccess?.(`Worktree '${pendingDeleteWorktree.pathRelativeToHome}' deleted successfully`)
+    } catch (error) {
+      console.error('Failed to delete worktree:', error)
+      onError?.(`Failed to delete worktree: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [pendingDeleteWorktree, mutate, onSuccess, onError])
 
   if (error) {
     return (
@@ -191,6 +223,19 @@ export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo
           </div>
         )}
       </div>
+
+      <DeleteWorktreeModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false)
+          setPendingDeleteWorktree(null)
+          setPendingDeleteStatus(null)
+        }}
+        worktree={pendingDeleteWorktree}
+        status={pendingDeleteStatus}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+      />
     </div>
   )
 }

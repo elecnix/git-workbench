@@ -108,6 +108,17 @@ export async function POST(request: Request) {
     // Create the worktree path
     const worktreePath = `${expandPath(config.paths.worktreeRoot)}/${worktreeName}`
     
+    // Check if worktree path already exists
+    try {
+      await fs.access(worktreePath)
+      return NextResponse.json(
+        { error: `Worktree already exists at path: ${worktreePath}` },
+        { status: 400 }
+      )
+    } catch {
+      // Path doesn't exist, which is what we want
+    }
+    
     try {
       // If it's a remote reference, fetch it first
       let startPointToUse = startPoint || branchName
@@ -205,14 +216,19 @@ export async function POST(request: Request) {
       console.log(`Final startPoint to use: ${startPointToUse}`)
       
       // Check if the target branch already exists
+      let branchExists = false
       try {
         await execCommand(`git --git-dir "${gitDir}" rev-parse --verify "${branchName}"`)
+        branchExists = true
         console.log(`Branch ${branchName} already exists, checking it out directly`)
+      } catch (branchCheckError) {
+        console.log(`Branch ${branchName} doesn't exist locally, will create it`)
+      }
+      
+      if (branchExists) {
         // Branch exists, create worktree from existing branch
         await execCommand(`git --git-dir "${gitDir}" worktree add "${worktreePath}" "${branchName}"`)
-      } catch (branchCheckError) {
-        console.log(`Branch ${branchName} doesn't exist, creating new branch from ${startPointToUse}`)
-        
+      } else {
         // Create worktree from starting point (branch, tag, or commit)
         if (startPointToUse === '--orphan') {
           // Create an orphan worktree (no parent branch)
@@ -220,8 +236,17 @@ export async function POST(request: Request) {
           // Initialize the new branch in the worktree
           await execCommand(`git -C "${worktreePath}" checkout -b "${branchName}"`)
         } else {
-          // Create worktree from existing reference
-          await execCommand(`git --git-dir "${gitDir}" worktree add "${worktreePath}" "${startPointToUse}" -b "${branchName}"`)
+          // Check if the branch exists before trying to create it with -b flag
+          try {
+            await execCommand(`git --git-dir "${gitDir}" rev-parse --verify "${branchName}"`)
+            // Branch exists, create worktree without -b flag
+            console.log(`Branch ${branchName} exists, creating worktree from it`)
+            await execCommand(`git --git-dir "${gitDir}" worktree add "${worktreePath}" "${branchName}"`)
+          } catch {
+            // Branch doesn't exist, create it with -b flag
+            console.log(`Creating new branch ${branchName} from ${startPointToUse}`)
+            await execCommand(`git --git-dir "${gitDir}" worktree add "${worktreePath}" "${startPointToUse}" -b "${branchName}"`)
+          }
         }
       }
       
@@ -236,8 +261,38 @@ export async function POST(request: Request) {
       })
     } catch (gitError) {
       console.error('Git command failed:', gitError)
+      const errorMessage = gitError instanceof Error ? gitError.message : 'Unknown error'
+      
+      // Detect specific error conditions
+      let userFriendlyError = errorMessage
+      
+      if (errorMessage.includes('already exists')) {
+        if (errorMessage.includes('worktree')) {
+          userFriendlyError = `Worktree already exists. A worktree is already checked out at this location.`
+        } else if (errorMessage.includes('branch')) {
+          // Check which worktree is using this branch
+          try {
+            const { stdout } = await execCommand(`git --git-dir "${gitDir}" worktree list --porcelain`)
+            const lines = stdout.trim().split('\n')
+            for (const line of lines) {
+              const parts = line.split(/\s+/)
+              if (parts.length >= 3) {
+                const wtPath = parts[0]
+                const wtBranch = parts[2]?.replace('branch ', '')
+                if (wtBranch === `refs/heads/${branchName}`) {
+                  userFriendlyError = `Branch '${branchName}' is already checked out in worktree at: ${wtPath}`
+                  break
+                }
+              }
+            }
+          } catch (wtError) {
+            userFriendlyError = `Branch '${branchName}' is already checked out in another worktree.`
+          }
+        }
+      }
+      
       return NextResponse.json(
-        { error: `Failed to create worktree: ${gitError instanceof Error ? gitError.message : 'Unknown error'}` },
+        { error: `Failed to create worktree: ${userFriendlyError}` },
         { status: 500 }
       )
     }

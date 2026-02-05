@@ -10,6 +10,7 @@ interface CreateWorktreeModalProps {
   onCreateWorktree: (repoName: string, branchName: string, worktreeName: string, startPoint?: string) => void
   onSuccess?: (message: string) => void
   onError?: (message: string) => void
+  onNavigateToWorktrees?: (repoName: string) => void
 }
 
 export function CreateWorktreeModal({
@@ -19,12 +20,14 @@ export function CreateWorktreeModal({
   fromBranch,
   onCreateWorktree,
   onSuccess,
-  onError
+  onError,
+  onNavigateToWorktrees
 }: CreateWorktreeModalProps) {
   const [worktreeName, setWorktreeName] = useState('')
   const [branchName, setBranchName] = useState('')
   const [startPoint, setStartPoint] = useState(fromBranch || 'origin/main')
   const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState('')
 
   // Auto-populate worktree name from branch when fromBranch is provided
   useEffect(() => {
@@ -50,6 +53,7 @@ export function CreateWorktreeModal({
       setWorktreeName('')
       setBranchName('')
       setStartPoint('origin/main')
+      setError('')
     }
   }
 
@@ -89,6 +93,7 @@ export function CreateWorktreeModal({
     const finalStartPoint = fromBranch ? (startPoint.trim() || 'origin/main') : 'origin/main'
 
     setIsCreating(true)
+    setError('')
     try {
       await onCreateWorktree(repoName, finalBranchName, worktreeName.trim(), finalStartPoint)
       // Success/error handling is done in the parent component
@@ -96,9 +101,14 @@ export function CreateWorktreeModal({
       setWorktreeName('')
       setBranchName('')
       setStartPoint('origin/main')
-    } catch (error) {
-      console.error('Failed to create worktree:', error)
-      // Error handling is done in the parent component
+      // Navigate to worktrees tab filtered by this repo
+      if (onNavigateToWorktrees) {
+        onNavigateToWorktrees(repoName)
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      console.error('Failed to create worktree:', err)
+      setError(errorMessage)
     } finally {
       setIsCreating(false)
     }
@@ -117,6 +127,12 @@ export function CreateWorktreeModal({
         </p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+          
           <div>
             <label htmlFor="worktree" className="block text-sm font-medium mb-2">
               Worktree Name

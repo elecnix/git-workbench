@@ -80,19 +80,20 @@ export default function AppShell() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create worktree')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create worktree')
       }
 
       const result = await response.json()
       console.log('Worktree created successfully:', result)
       
       success(`Worktree '${worktreeName}' created successfully!`)
+      setCreateWorktreeModalOpen(false)
     } catch (err) {
       console.error('Failed to create worktree:', err)
-      error(`Failed to create worktree: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      throw err
     }
-  }, [success, error])
+  }, [success])
 
   const handleCloneRepo = useCallback(async (repoName: string) => {
     try {
@@ -188,6 +189,7 @@ export default function AppShell() {
         onCreateWorktree={handleCreateWorktreeSubmit}
         onSuccess={success}
         onError={error}
+        onNavigateToWorktrees={handleJumpToWorktrees}
       />
 
       {/* Toast Container */}
