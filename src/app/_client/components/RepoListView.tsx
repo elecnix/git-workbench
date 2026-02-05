@@ -95,6 +95,32 @@ export function RepoListView({
     onSearchChange('')
   }, [onSearchChange])
 
+  const handleCloneRepoByName = useCallback(async (repoName: string) => {
+    try {
+      const repo = repos.find(r => r.repoName === repoName)
+      if (!repo) return
+
+      const response = await fetch('/api/clone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoName: repo.repoName,
+          fullName: repo.fullName
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Failed to clone repository:', errorData.error)
+        return
+      }
+
+      mutate()
+    } catch (error) {
+      console.error('Failed to clone repository:', error)
+    }
+  }, [repos, mutate])
+
   const handleDeleteRepo = useCallback(async (repoName: string) => {
     try {
       await fetch('/api/repos/delete', {
@@ -181,6 +207,7 @@ export function RepoListView({
                 onToggleFavorite={handleToggleFavorite}
                 onJumpToWorktrees={onJumpToWorktrees}
                 onCreateWorktree={onCreateWorktree}
+                onCloneRepo={handleCloneRepoByName}
                 onDeleteRepo={onDeleteRepo || handleDeleteRepo}
                 onJumpToPullRequests={onJumpToPullRequests}
                 onPublishRepo={onPublishRepo}

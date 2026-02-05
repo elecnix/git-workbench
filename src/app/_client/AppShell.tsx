@@ -27,7 +27,9 @@ export function AppShell() {
     searchQuery, 
     setSearchQuery, 
     jumpToRepo,
+    jumpToWorktrees,
     jumpToWorktreesForRepo,
+    jumpToPullRequests,
     jumpToRepoPullRequests
   } = useAppNavigation()
   
@@ -88,16 +90,15 @@ export function AppShell() {
     setHighlightPRNumber(prNumber)
     setHighlightPRRepository(prRepository)
     setActiveTab('pull-requests')
-  }, [])
+  }, [setActiveTab])
 
   const handleClearWorktreeFilter = useCallback(() => {
-    setActiveTab('worktrees')
-  }, [setActiveTab])
+    jumpToWorktrees()
+  }, [jumpToWorktrees])
 
   const handleClearPullRequestFilter = useCallback(() => {
-    // Navigate to pull requests without the repo parameter
-    setActiveTab('pull-requests')
-  }, [setActiveTab])
+    jumpToPullRequests()
+  }, [jumpToPullRequests])
 
   const handleCreateWorktreeSubmit = useCallback(async (repoName: string, branchName: string, worktreeName: string, startPoint?: string) => {
     try {

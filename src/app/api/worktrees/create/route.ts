@@ -3,6 +3,7 @@ import { getConfig } from '@/lib/config'
 import { execCommand, expandPath } from '@/lib/git'
 import { CreateWorktreeRequest } from '@/types/worktrees'
 import { promises as fs } from 'fs'
+import path from 'path'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,11 +57,53 @@ export async function POST(request: NextRequest) {
         gitDir = `${regularRepoPath}/.git`
         isBare = false
       } catch {
-        // Neither bare nor regular repo exists
-        return NextResponse.json(
-          { error: `Repository not found at ${barePath} or ${regularRepoPath}` },
-          { status: 404 }
-        )
+        // Neither bare nor regular repo exists, try to clone it if we have a remote URL
+        if (repoConfig.httpsUrl || repoConfig.sshUrl) {
+          try {
+            // Ensure parent directory exists
+            await fs.mkdir(path.dirname(barePath), { recursive: true })
+            
+            // Get the remote URL - prefer HTTPS, fallback to SSH
+            let remoteUrl = ''
+            if (repoConfig.httpsUrl) {
+              remoteUrl = repoConfig.httpsUrl
+            } else if (repoConfig.sshUrl) {
+              // Try to use HTTPS by converting SSH URL to HTTPS if no HTTPS URL is provided
+              remoteUrl = repoConfig.sshUrl.replace('git@github.com:', 'https://github.com/')
+            } else {
+              return NextResponse.json(
+                { error: `Repository not found at ${barePath} or ${regularRepoPath} and no remote URL available for cloning` },
+                { status: 404 }
+              )
+            }
+            
+            // Clone as bare repository
+            await execCommand(`git clone --bare "${remoteUrl}" "${barePath}"`)
+            
+            // Update repo config with the bare path
+            repoConfig.barePath = barePath
+            
+            // Save updated config
+            const { updateConfig } = await import('@/lib/config')
+            await updateConfig({ repos: config.repos })
+            
+            // Use the newly cloned bare repo
+            gitDir = barePath
+            isBare = true
+          } catch (cloneError) {
+            console.error('Failed to clone repository:', cloneError)
+            return NextResponse.json(
+              { error: `Repository not found at ${barePath} or ${regularRepoPath} and failed to clone: ${cloneError instanceof Error ? cloneError.message : 'Unknown error'}` },
+              { status: 500 }
+            )
+          }
+        } else {
+          // Neither bare nor regular repo exists and no remote URL to clone from
+          return NextResponse.json(
+            { error: `Repository not found at ${barePath} or ${regularRepoPath}. Please clone the repository first.` },
+            { status: 404 }
+          )
+        }
       }
     }
 

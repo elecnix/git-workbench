@@ -37,6 +37,10 @@ export function useAppNavigation() {
     router.push(`/worktrees?repo=${encodeURIComponent(repoName)}`, { scroll: false })
   }, [router])
 
+  const jumpToPullRequests = useCallback(() => {
+    router.push('/pull-requests', { scroll: false })
+  }, [router])
+
   const jumpToRepoPullRequests = useCallback((repoName: string) => {
     setSearchQuery('')
     router.push(`/pull-requests?repo=${encodeURIComponent(repoName)}`, { scroll: false })
@@ -50,6 +54,7 @@ export function useAppNavigation() {
     jumpToRepo,
     jumpToWorktrees,
     jumpToWorktreesForRepo,
+    jumpToPullRequests,
     jumpToRepoPullRequests
   }
 }
