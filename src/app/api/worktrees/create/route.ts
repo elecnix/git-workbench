@@ -37,9 +37,6 @@ export async function POST(request: NextRequest) {
     const worktreeRoot = expandPath(config.paths.worktreeRoot)
     const worktreePath = `${worktreeRoot}/${repoName}/${worktreeName}`
 
-    // Determine the ref to use
-    const targetRef = ref || repoConfig.defaultBranch || 'main'
-
     // Determine which git directory to use
     let gitDir = barePath
     let isBare = true
@@ -104,6 +101,40 @@ export async function POST(request: NextRequest) {
             { status: 404 }
           )
         }
+      }
+    }
+
+    // Resolve the actual default branch from the repo's HEAD symref
+    const resolveDefaultBranch = async (dir: string): Promise<string> => {
+      try {
+        const headContent = await fs.readFile(`${dir}/HEAD`, 'utf-8')
+        const match = headContent.trim().match(/^ref: refs\/heads\/(.+)$/)
+        if (match) return match[1]
+      } catch { /* ignore */ }
+      return 'main'
+    }
+
+    // Determine the ref to use, resolving from the repo if not explicitly provided
+    let targetRef = ref || repoConfig.defaultBranch || ''
+    if (!targetRef) {
+      targetRef = await resolveDefaultBranch(gitDir)
+    }
+
+    // Verify the target ref actually exists in the repo; fall back to the HEAD branch
+    const refExists = async (dir: string, refName: string): Promise<boolean> => {
+      try {
+        await execCommand(`git --git-dir "${dir}" rev-parse --verify "${refName}"`)
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    if (!(await refExists(gitDir, targetRef))) {
+      const headBranch = await resolveDefaultBranch(gitDir)
+      if (headBranch !== targetRef && await refExists(gitDir, headBranch)) {
+        console.log(`Target ref "${targetRef}" not found, falling back to HEAD branch "${headBranch}"`)
+        targetRef = headBranch
       }
     }
 
