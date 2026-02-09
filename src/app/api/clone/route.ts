@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getConfig } from '@/lib/config'
+import { getConfig, addRepo } from '@/lib/config'
 import { execCommand, expandPath } from '@/lib/git'
+import { extractRepoInfo } from '@/lib/gitRepoInfo'
 import { promises as fs } from 'fs'
 import path from 'path'
 
@@ -103,6 +104,33 @@ export async function POST(request: Request) {
     try {
       // Clone as bare repository
       await execCommand(`git clone --bare "${remoteUrl}" "${targetPath}"`)
+      
+      // If this was a URL-based clone, add the repository to configuration
+      if (url && repoConfig) {
+        try {
+          // Get repository information from the cloned repository
+          const repoInfo = await extractRepoInfo(targetPath, repoConfig.repoName || repoConfig.fullName!)
+          
+          // Update repo config with extracted information
+          repoConfig.defaultBranch = repoInfo.defaultBranch
+          if (repoInfo.httpsUrl && !repoConfig.httpsUrl) {
+            repoConfig.httpsUrl = repoInfo.httpsUrl
+          }
+          if (repoInfo.sshUrl && !repoConfig.sshUrl) {
+            repoConfig.sshUrl = repoInfo.sshUrl
+          }
+          if (repoInfo.fullName && !repoConfig.fullName) {
+            repoConfig.fullName = repoInfo.fullName
+          }
+          
+          // Add to configuration
+          await addRepo(repoConfig)
+          console.log(`Repository '${targetRepoName}' added to configuration`)
+        } catch (configError) {
+          console.error('Failed to add repository to configuration:', configError)
+          // Don't fail the clone operation if config update fails
+        }
+      }
       
       return NextResponse.json({
         success: true,

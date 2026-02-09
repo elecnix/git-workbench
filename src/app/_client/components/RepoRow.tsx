@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useState, useEffect, useRef } from 'react'
 import { Repo } from '@/types/repos'
 import { Button } from './ui/Button'
-import { Star, GitBranchPlus, GitBranch, Download, MoreHorizontal, Trash2, GitPullRequest, Upload } from 'lucide-react'
+import { Star, GitBranchPlus, GitBranch, Download, MoreHorizontal, Trash2, GitPullRequest, Upload, Plus } from 'lucide-react'
 import { PublishRepoModal } from './PublishRepoModal'
 import clsx from 'clsx'
 
@@ -15,6 +15,7 @@ interface RepoRowProps {
   onJumpToPullRequests?: (repoName: string) => void
   onJumpToBranches?: (repoName: string) => void
   onPublishRepo?: (repoName: string) => void
+  onTrackRepo?: (repoName: string) => void
   needsClone?: boolean
 }
 
@@ -28,6 +29,7 @@ export const RepoRow = memo(function RepoRow({
   onJumpToPullRequests,
   onJumpToBranches,
   onPublishRepo,
+  onTrackRepo,
   needsClone
 }: RepoRowProps) {
   const [showMenu, setShowMenu] = useState(false)
@@ -102,6 +104,12 @@ export const RepoRow = memo(function RepoRow({
     setShowPublishModal(true)
   }, [])
 
+  const handleTrackRepo = useCallback(() => {
+    if (onTrackRepo) {
+      onTrackRepo(repo.repoName)
+    }
+  }, [repo.repoName, onTrackRepo])
+
   const handlePublishSuccess = useCallback((sshUrl: string) => {
     setShowPublishModal(false)
     if (onPublishRepo) {
@@ -172,6 +180,19 @@ export const RepoRow = memo(function RepoRow({
           )}>
             {repo.tracked ? 'Tracked' : 'Discovered'}
           </span>
+
+          {/* Show Track button if repo is untracked */}
+          {!repo.tracked && onTrackRepo && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleTrackRepo}
+              title="Track this repository"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Track
+            </Button>
+          )}
 
           {/* Show Clone button if repo needs cloning and has remote URLs */}
           {needsClone && repo.remoteUrls && repo.remoteUrls.length > 0 && (

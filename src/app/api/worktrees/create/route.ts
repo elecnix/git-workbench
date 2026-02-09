@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getConfig } from '@/lib/config'
 import { execCommand, expandPath } from '@/lib/git'
+import { extractRepoInfo } from '@/lib/gitRepoInfo'
 import { CreateWorktreeRequest } from '@/types/worktrees'
 import { promises as fs } from 'fs'
 import path from 'path'
@@ -21,13 +22,42 @@ export async function POST(request: NextRequest) {
     const config = await getConfig()
     
     // Find the repo in config
-    const repoConfig = config.repos.find(r => 
+    let repoConfig = config.repos.find(r => 
       r.fullName === repoFullNameOrName || r.repoName === repoFullNameOrName
     )
 
+    // If not found in config, check for untracked bare repositories
+    if (!repoConfig) {
+      const bareRootPath = expandPath(config.paths.bareRoot)
+      const possibleBarePath = `${bareRootPath}/${repoFullNameOrName}.git`
+      
+      try {
+        await fs.access(possibleBarePath)
+        
+        // Repository exists on disk but not in config
+        // Extract repository information
+        const repoInfo = await extractRepoInfo(possibleBarePath, repoFullNameOrName)
+        
+        // Create a temporary repo config for untracked repositories
+        repoConfig = {
+          repoName: repoFullNameOrName,
+          fullName: repoInfo.fullName,
+          httpsUrl: repoInfo.httpsUrl,
+          sshUrl: repoInfo.sshUrl,
+          defaultBranch: repoInfo.defaultBranch,
+          favorite: false,
+          barePath: possibleBarePath
+        }
+        
+        console.log(`Found untracked repository: ${repoFullNameOrName}`)
+      } catch {
+        // Repository doesn't exist on disk
+      }
+    }
+
     if (!repoConfig) {
       return NextResponse.json(
-        { error: 'Repository not found in configuration' },
+        { error: 'Repository not found in configuration or on disk' },
         { status: 404 }
       )
     }
@@ -40,6 +70,7 @@ export async function POST(request: NextRequest) {
     // Determine which git directory to use
     let gitDir = barePath
     let isBare = true
+    let wasUntracked = false
 
     // First try as bare repo
     try {
@@ -80,10 +111,6 @@ export async function POST(request: NextRequest) {
             // Update repo config with the bare path
             repoConfig.barePath = barePath
             
-            // Save updated config
-            const { updateConfig } = await import('@/lib/config')
-            await updateConfig({ repos: config.repos })
-            
             // Use the newly cloned bare repo
             gitDir = barePath
             isBare = true
@@ -101,6 +128,20 @@ export async function POST(request: NextRequest) {
             { status: 404 }
           )
         }
+      }
+    }
+
+    // Check if this was an untracked repository and add it to config
+    if (!config.repos.find(r => r.repoName === repoConfig.repoName || r.fullName === repoConfig.fullName)) {
+      wasUntracked = true
+      try {
+        const { updateConfig } = await import('@/lib/config')
+        const updatedRepos = [...config.repos, repoConfig]
+        await updateConfig({ repos: updatedRepos })
+        console.log(`Added untracked repository '${repoConfig.repoName}' to configuration`)
+      } catch (configError) {
+        console.error('Failed to add repository to configuration:', configError)
+        // Don't fail the worktree creation if config update fails
       }
     }
 
@@ -165,7 +206,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       message: 'Worktree created successfully',
-      path: worktreePath
+      path: worktreePath,
+      tracked: !wasUntracked
     })
   } catch (error) {
     console.error('Failed to create worktree:', error)

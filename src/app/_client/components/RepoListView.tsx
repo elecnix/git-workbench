@@ -17,6 +17,7 @@ interface RepoListViewProps {
   onJumpToBranches?: (repoName: string) => void
   onAddRepo?: () => void
   onPublishRepo?: (repoName: string) => void
+  onTrackRepo?: (repoName: string) => void
   searchQuery: string
   onSearchChange: (query: string) => void
 }
@@ -32,6 +33,7 @@ export function RepoListView({
   onJumpToBranches,
   onAddRepo,
   onPublishRepo,
+  onTrackRepo,
   searchQuery,
   onSearchChange
 }: RepoListViewProps) {
@@ -214,6 +216,7 @@ export function RepoListView({
                 onJumpToPullRequests={onJumpToPullRequests}
                 onJumpToBranches={onJumpToBranches}
                 onPublishRepo={onPublishRepo}
+                onTrackRepo={onTrackRepo}
                 needsClone={repo.needsClone}
               />
             ))}

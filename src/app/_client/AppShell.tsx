@@ -171,6 +171,34 @@ export function AppShell() {
     }
   }, [mutateRepos, success, error])
 
+  const handleTrackRepo = useCallback(async (repoName: string) => {
+    try {
+      const response = await fetch('/api/repos/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ repoNameOrFullName: repoName })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to track repository')
+      }
+
+      const result = await response.json()
+      console.log('Repository tracked successfully:', result)
+      
+      // Refresh repos list to show updated tracking status
+      await mutateRepos()
+      
+      success(`Repository '${repoName}' is now tracked!`)
+    } catch (err) {
+      console.error('Failed to track repository:', err)
+      error(err instanceof Error ? err.message : 'Failed to track repository')
+    }
+  }, [mutateRepos, success, error])
+
   const handleCreateRepoSubmit = useCallback(async (repoData: CreateRepoData) => {
     try {
       const response = await fetch('/api/repos/create', {
@@ -217,6 +245,7 @@ export function AppShell() {
             onJumpToPullRequests={jumpToRepoPullRequests}
             onJumpToBranches={jumpToRepoBranches}
             onPublishRepo={handlePublishRepo}
+            onTrackRepo={handleTrackRepo}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />
@@ -233,6 +262,7 @@ export function AppShell() {
             onJumpToPullRequests={jumpToRepoPullRequests}
             onJumpToBranches={jumpToRepoBranches}
             onPublishRepo={handlePublishRepo}
+            onTrackRepo={handleTrackRepo}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />
