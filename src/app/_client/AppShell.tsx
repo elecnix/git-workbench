@@ -49,7 +49,6 @@ export function AppShell() {
   const [fromBranch, setFromBranch] = useState<string | undefined>()
   const [highlightPRNumber, setHighlightPRNumber] = useState<number | undefined>()
   const [highlightPRRepository, setHighlightPRRepository] = useState<string | undefined>()
-  const [highlightWorktreePath, setHighlightWorktreePath] = useState<string | undefined>()
 
   // Get repository filter from URL parameter
   const worktreeFilterRepo = useMemo(() => {
@@ -72,12 +71,8 @@ export function AppShell() {
   }, [mutateConfig])
 
   const handleJumpToWorktrees = useCallback((repoName: string, worktreePath?: string) => {
-    jumpToWorktreesForRepo(repoName)
+    jumpToWorktreesForRepo(repoName, worktreePath)
     mutateWorktrees()
-    // Set highlight for the newly created worktree if path is provided
-    if (worktreePath) {
-      setHighlightWorktreePath(worktreePath)
-    }
   }, [jumpToWorktreesForRepo, mutateWorktrees])
 
   const handleJumpToPullRequests = useCallback((repoName: string) => {
@@ -290,8 +285,6 @@ export function AppShell() {
               onSuccess={success}
               onError={error}
               onNavigateToPR={handleNavigateToPR}
-              highlightWorktreePath={highlightWorktreePath}
-              onClearHighlight={() => setHighlightWorktreePath(undefined)}
             />
           )}
 

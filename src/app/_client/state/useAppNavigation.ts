@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { setPendingHighlightWorktreePath } from './pendingHighlight'
 
 export type Tab = 'repositories' | 'favorites' | 'worktrees' | 'branches' | 'pull-requests'
 
@@ -33,8 +34,11 @@ export function useAppNavigation() {
     router.push('/worktrees', { scroll: false })
   }, [router])
 
-  const jumpToWorktreesForRepo = useCallback((repoName: string) => {
+  const jumpToWorktreesForRepo = useCallback((repoName: string, highlightPath?: string) => {
     setSearchQuery('')
+    if (highlightPath) {
+      setPendingHighlightWorktreePath(highlightPath)
+    }
     router.push(`/worktrees?repo=${encodeURIComponent(repoName)}`, { scroll: false })
   }, [router])
 

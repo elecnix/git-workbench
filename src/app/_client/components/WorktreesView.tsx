@@ -10,6 +10,7 @@ import { Button } from './ui/Button'
 import { GitBranchPlus } from 'lucide-react'
 import { Worktree, WorktreeStatus } from '@/types/worktrees'
 import clsx from 'clsx'
+import { getPendingHighlightWorktreePath, clearPendingHighlightWorktreePath } from '../state/pendingHighlight'
 
 interface WorktreesViewProps {
   onCreateWorktree: (repoName: string) => void
@@ -19,11 +20,9 @@ interface WorktreesViewProps {
   onSuccess?: (message: string) => void
   onError?: (message: string) => void
   onNavigateToPR?: (prNumber: number, prRepository: string) => void
-  highlightWorktreePath?: string
-  onClearHighlight?: () => void
 }
 
-export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo, onClearFilter, onSuccess, onError, onNavigateToPR, highlightWorktreePath, onClearHighlight }: WorktreesViewProps) {
+export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo, onClearFilter, onSuccess, onError, onNavigateToPR }: WorktreesViewProps) {
   const { worktrees, isLoading, error, mutate } = useWorktrees()
   const { repos } = useRepos()
   const { pullRequests } = usePullRequests()
@@ -38,27 +37,32 @@ export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo
   // Refs for scrolling to highlighted worktree
   const worktreeRowRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  // Clear highlight after animation
-  useEffect(() => {
-    if (highlightWorktreePath && onClearHighlight) {
-      const timer = setTimeout(() => {
-        onClearHighlight()
-      }, 3000) // 3 seconds animation
-      return () => clearTimeout(timer)
-    }
-  }, [highlightWorktreePath, onClearHighlight])
+  // Consume the module-level pending highlight path on mount via lazy initializer.
+  // This runs synchronously during the first render, is immune to StrictMode
+  // double-mounting (React preserves state from the first initializer), and doesn't
+  // depend on any prop from AppShell.
+  const [highlightWorktreePath, setHighlightWorktreePath] = useState<string | undefined>(() => {
+    const pending = getPendingHighlightWorktreePath()
+    if (pending) clearPendingHighlightWorktreePath()
+    return pending
+  })
 
-  // Scroll to highlighted worktree
+  // Scroll to highlighted worktree once it appears in the DOM, then auto-clear after 3s
   useEffect(() => {
-    if (highlightWorktreePath) {
-      const worktreeElement = worktreeRowRefs.current.get(highlightWorktreePath)
-      if (worktreeElement) {
-        setTimeout(() => {
-          worktreeElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 100)
-      }
-    }
-  }, [highlightWorktreePath])
+    if (!highlightWorktreePath) return
+
+    const worktreeElement = worktreeRowRefs.current.get(highlightWorktreePath)
+    if (!worktreeElement) return
+
+    setTimeout(() => {
+      worktreeElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+
+    const timer = setTimeout(() => {
+      setHighlightWorktreePath(undefined)
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [highlightWorktreePath, worktrees])
 
   // Group worktrees by repository and include all repos
   const worktreesByRepo = useMemo(() => {
