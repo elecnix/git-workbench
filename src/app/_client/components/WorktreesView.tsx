@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo, useState, useCallback, useEffect } from 'react'
 import { useWorktrees } from '../data/useWorktrees'
 import { useRepos } from '../data/useRepos'
 import { usePullRequests } from '../data/usePullRequests'
@@ -19,9 +19,11 @@ interface WorktreesViewProps {
   onSuccess?: (message: string) => void
   onError?: (message: string) => void
   onNavigateToPR?: (prNumber: number, prRepository: string) => void
+  highlightWorktreePath?: string
+  onClearHighlight?: () => void
 }
 
-export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo, onClearFilter, onSuccess, onError, onNavigateToPR }: WorktreesViewProps) {
+export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo, onClearFilter, onSuccess, onError, onNavigateToPR, highlightWorktreePath, onClearHighlight }: WorktreesViewProps) {
   const { worktrees, isLoading, error, mutate } = useWorktrees()
   const { repos } = useRepos()
   const { pullRequests } = usePullRequests()
@@ -32,6 +34,16 @@ export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo
   const [isDeleting, setIsDeleting] = useState(false)
   const [stateMismatchOpen, setStateMismatchOpen] = useState(false)
   const [mismatches, setMismatches] = useState<any[]>([])
+
+  // Clear highlight after animation
+  useEffect(() => {
+    if (highlightWorktreePath && onClearHighlight) {
+      const timer = setTimeout(() => {
+        onClearHighlight()
+      }, 3000) // 3 seconds animation
+      return () => clearTimeout(timer)
+    }
+  }, [highlightWorktreePath, onClearHighlight])
 
   // Group worktrees by repository and include all repos
   const worktreesByRepo = useMemo(() => {
@@ -279,6 +291,7 @@ export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo
                             onCreateFromBranch={onCreateFromBranch}
                             allPullRequests={pullRequests}
                             onNavigateToPR={onNavigateToPR}
+                            isHighlighted={highlightWorktreePath === worktree.path}
                           />
                         ))}
                       </div>

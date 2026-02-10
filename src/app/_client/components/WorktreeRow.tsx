@@ -12,6 +12,7 @@ interface WorktreeRowProps {
   onCreateFromBranch: (repoName: string, branchName: string) => void
   allPullRequests?: PRNotification[]
   onNavigateToPR?: (prNumber: number, prRepository: string) => void
+  isHighlighted?: boolean
 }
 
 export const WorktreeRow = memo(function WorktreeRow({
@@ -19,7 +20,8 @@ export const WorktreeRow = memo(function WorktreeRow({
   onDeleteWorktree,
   onCreateFromBranch,
   allPullRequests = [],
-  onNavigateToPR
+  onNavigateToPR,
+  isHighlighted = false
 }: WorktreeRowProps) {
   const { pullRequests } = usePullRequest(worktree.repoFullName || '', worktree.branch)
   
@@ -81,7 +83,10 @@ export const WorktreeRow = memo(function WorktreeRow({
   )
 
   return (
-    <div className="border-b p-4 hover:bg-muted/50 transition-colors">
+    <div className={clsx(
+      'border-b p-4 hover:bg-muted/50 transition-colors',
+      isHighlighted && 'bg-blue-50 dark:bg-blue-900/20 animate-pulse'
+    )}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3 flex-1">
           <div className="flex items-center space-x-2">

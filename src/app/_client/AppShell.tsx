@@ -48,6 +48,7 @@ export function AppShell() {
   const [fromBranch, setFromBranch] = useState<string | undefined>()
   const [highlightPRNumber, setHighlightPRNumber] = useState<number | undefined>()
   const [highlightPRRepository, setHighlightPRRepository] = useState<string | undefined>()
+  const [highlightWorktreePath, setHighlightWorktreePath] = useState<string | undefined>()
 
   // Get repository filter from URL parameter
   const worktreeFilterRepo = useMemo(() => {
@@ -144,11 +145,17 @@ export function AppShell() {
       
       success(`Worktree '${worktreeName}' created successfully!`)
       setCreateWorktreeModalOpen(false)
+      
+      // Set highlight for the newly created worktree and navigate to worktrees view
+      if (result.path) {
+        setHighlightWorktreePath(result.path)
+        setActiveTab('worktrees')
+      }
     } catch (err) {
       console.error('Failed to create worktree:', err)
       throw err
     }
-  }, [success])
+  }, [success, setActiveTab])
 
   const handleCreateRepo = useCallback(() => {
     setCreateRepoModalOpen(true)
@@ -281,6 +288,8 @@ export function AppShell() {
             onSuccess={success}
             onError={error}
             onNavigateToPR={handleNavigateToPR}
+            highlightWorktreePath={highlightWorktreePath}
+            onClearHighlight={() => setHighlightWorktreePath(undefined)}
           />
         )}
 
