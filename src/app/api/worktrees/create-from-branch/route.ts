@@ -41,6 +41,15 @@ export async function POST(request: NextRequest) {
     // Create worktree for the new branch
     await execCommand(`git --git-dir "${barePath}" worktree add "${worktreePath}" "${newBranchName}"`)
 
+    // Configure remote fetch setting for proper branch tracking
+    try {
+      await execCommand(`git -C "${worktreePath}" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"`)
+      await execCommand(`git -C "${worktreePath}" fetch origin`)
+    } catch (remoteConfigError) {
+      console.warn('Failed to configure remote tracking:', remoteConfigError)
+      // Don't fail the worktree creation, just log the warning
+    }
+
     return NextResponse.json({ 
       message: 'Worktree created from branch successfully',
       path: worktreePath,

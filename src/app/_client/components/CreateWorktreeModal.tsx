@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
+import { useBranchReference } from '../contexts/BranchReferenceContext'
 
 interface CreateWorktreeModalProps {
   isOpen: boolean
@@ -25,20 +26,35 @@ export function CreateWorktreeModal({
 }: CreateWorktreeModalProps) {
   const [worktreeName, setWorktreeName] = useState('')
   const [branchName, setBranchName] = useState('')
-  const [startPoint, setStartPoint] = useState(fromBranch || 'origin/main')
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState('')
+  
+  const { isRemoteRef, getLocalRef } = useBranchReference()
+
+  // Derived state for startPoint based on fromBranch and context
+  const derivedStartPoint = useMemo(() => {
+    if (!fromBranch) return 'origin/main'
+    const isRemote = isRemoteRef(fromBranch)
+    return isRemote ? fromBranch : getLocalRef(fromBranch)
+  }, [fromBranch, isRemoteRef, getLocalRef])
 
   // Auto-populate worktree name from branch when fromBranch is provided
   useEffect(() => {
     if (fromBranch && isOpen) {
-      // Extract the branch name without "origin/" prefix if present
-      const cleanBranchName = fromBranch.replace(/^origin\//, '')
-      setWorktreeName(cleanBranchName)
-      setBranchName(cleanBranchName)
-      setStartPoint(cleanBranchName) // Update startPoint to use the PR's branch name
+      // Detect remote references and preserve them
+      const isRemote = isRemoteRef(fromBranch)
+      if (isRemote) {
+        // For remote references, extract the clean branch name for display
+        const cleanBranchName = getLocalRef(fromBranch)
+        setWorktreeName(cleanBranchName)
+        setBranchName(cleanBranchName)
+      } else {
+        // For local branches, use as-is
+        setWorktreeName(fromBranch)
+        setBranchName(fromBranch)
+      }
     }
-  }, [fromBranch, isOpen])
+  }, [fromBranch, isOpen, isRemoteRef, getLocalRef])
 
   // Auto-populate branch name when worktree name changes, unless user has manually edited it
   useEffect(() => {
@@ -52,7 +68,6 @@ export function CreateWorktreeModal({
       onClose()
       setWorktreeName('')
       setBranchName('')
-      setStartPoint('origin/main')
       setError('')
     }
   }
@@ -81,16 +96,13 @@ export function CreateWorktreeModal({
     setBranchName(value)
   }
 
-  const handleStartPointChange = (value: string) => {
-    setStartPoint(value)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!worktreeName.trim()) return
 
     const finalBranchName = fromBranch ? (branchName.trim() || worktreeName.trim()) : worktreeName.trim()
-    const finalStartPoint = fromBranch ? (startPoint.trim() || 'origin/main') : 'origin/main'
+    const finalStartPoint = fromBranch ? derivedStartPoint : 'origin/main'
 
     setIsCreating(true)
     setError('')
@@ -100,7 +112,6 @@ export function CreateWorktreeModal({
       onClose()
       setWorktreeName('')
       setBranchName('')
-      setStartPoint('origin/main')
       // Navigate to worktrees tab filtered by this repo
       if (onNavigateToWorktrees) {
         onNavigateToWorktrees(repoName)
@@ -183,10 +194,9 @@ export function CreateWorktreeModal({
                 <Input
                   id="startPoint"
                   type="text"
-                  value={startPoint}
-                  onChange={(e) => handleStartPointChange(e.target.value)}
-                  placeholder="e.g., main, feature/other-branch, commit-hash"
-                  disabled={isCreating}
+                  value={derivedStartPoint}
+                  disabled={true}
+                  className="text-muted-foreground"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Branch, tag, or commit to create the new worktree from.

@@ -4,6 +4,7 @@ import { GitPullRequest, CheckCircle, XCircle, AlertCircle, Clock, Copy, Externa
 import { PRNotification } from '@/types/github'
 import { useUserInfo } from '../data/useUserInfo'
 import { useWorktrees } from '../data/useWorktrees'
+import { useWorktreeCreation } from '../hooks/useWorktreeCreation'
 import clsx from 'clsx'
 
 interface PRRowProps {
@@ -16,6 +17,7 @@ interface PRRowProps {
 export const PRRow = memo(function PRRow({ pr, onCopyNumber, onCreateWorktree, onCreateFromBranch }: PRRowProps) {
   const { userInfo } = useUserInfo()
   const { worktrees } = useWorktrees()
+  const { handleCreateWorktree } = useWorktreeCreation({ pr, onCreateFromBranch, onCreateWorktree })
 
   const handleCopyNumber = useCallback(() => {
     if (onCopyNumber) {
@@ -43,18 +45,6 @@ export const PRRow = memo(function PRRow({ pr, onCopyNumber, onCreateWorktree, o
       }
     }
   }, [pr.headRef, worktrees])
-
-  const handleCreateWorktree = useCallback(() => {
-    if (onCreateFromBranch) {
-      // Extract the repository name without owner for the worktree API
-      const repoName = pr.repository.split('/')[1] || pr.repository
-      onCreateFromBranch(repoName, pr.headRef)
-    } else if (onCreateWorktree) {
-      // Fallback to basic create worktree if onCreateFromBranch not available
-      const repoName = pr.repository.split('/')[1] || pr.repository
-      onCreateWorktree(repoName)
-    }
-  }, [onCreateFromBranch, onCreateWorktree, pr.repository, pr.headRef])
 
   const getRelativeTime = (dateString: string) => {
     const date = new Date(dateString)
@@ -252,4 +242,10 @@ export const PRRow = memo(function PRRow({ pr, onCopyNumber, onCreateWorktree, o
       </div>
     </div>
   )
+}, (prevProps, nextProps) => {
+  // Custom comparison for PR data to optimize re-renders
+  return prevProps.pr.number === nextProps.pr.number &&
+         prevProps.pr.headRef === nextProps.pr.headRef &&
+         prevProps.pr.state === nextProps.pr.state &&
+         prevProps.pr.updatedAt === nextProps.pr.updatedAt
 })

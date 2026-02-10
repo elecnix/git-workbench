@@ -19,6 +19,7 @@ import { useToast } from './hooks/useToast'
 import { Worktree } from '@/types/worktrees'
 import { CreateRepoData } from '@/types/config'
 import { generateSlug } from 'random-word-slugs'
+import { BranchReferenceProvider } from './contexts/BranchReferenceContext'
 
 export function AppShell() {
   const searchParams = useSearchParams()
@@ -239,124 +240,126 @@ export function AppShell() {
   }, [mutateRepos])
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <header className="bg-muted/30 border-b">
-        <TopTabs activeTab={activeTab} onTabChange={handleTabChange} />
-      </header>
+    <BranchReferenceProvider>
+      <div className="h-screen flex flex-col bg-background">
+        <header className="bg-muted/30 border-b">
+          <TopTabs activeTab={activeTab} onTabChange={handleTabChange} />
+        </header>
 
-      <main className="flex-1 overflow-hidden">
-        {activeTab === 'repositories' && (
-          <RepoListView
-            showFavoritesOnly={false}
-            onToggleFavorite={handleToggleFavorite}
-            onJumpToWorktrees={handleJumpToWorktrees}
-            onCreateWorktree={handleCreateWorktree}
-            onCloneRepo={handleCloneRepo}
-            onAddRepo={handleCreateRepo}
-            onJumpToPullRequests={jumpToRepoPullRequests}
-            onJumpToBranches={jumpToRepoBranches}
-            onPublishRepo={handlePublishRepo}
-            onTrackRepo={handleTrackRepo}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        )}
+        <main className="flex-1 overflow-hidden">
+          {activeTab === 'repositories' && (
+            <RepoListView
+              showFavoritesOnly={false}
+              onToggleFavorite={handleToggleFavorite}
+              onJumpToWorktrees={handleJumpToWorktrees}
+              onCreateWorktree={handleCreateWorktree}
+              onCloneRepo={handleCloneRepo}
+              onAddRepo={handleCreateRepo}
+              onJumpToPullRequests={jumpToRepoPullRequests}
+              onJumpToBranches={jumpToRepoBranches}
+              onPublishRepo={handlePublishRepo}
+              onTrackRepo={handleTrackRepo}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+            />
+          )}
 
-        {activeTab === 'favorites' && (
-          <RepoListView
-            showFavoritesOnly={true}
-            onToggleFavorite={handleToggleFavorite}
-            onJumpToWorktrees={handleJumpToWorktrees}
-            onCreateWorktree={handleCreateWorktree}
-            onCloneRepo={handleCloneRepo}
-            onAddRepo={handleCreateRepo}
-            onJumpToPullRequests={jumpToRepoPullRequests}
-            onJumpToBranches={jumpToRepoBranches}
-            onPublishRepo={handlePublishRepo}
-            onTrackRepo={handleTrackRepo}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        )}
+          {activeTab === 'favorites' && (
+            <RepoListView
+              showFavoritesOnly={true}
+              onToggleFavorite={handleToggleFavorite}
+              onJumpToWorktrees={handleJumpToWorktrees}
+              onCreateWorktree={handleCreateWorktree}
+              onCloneRepo={handleCloneRepo}
+              onAddRepo={handleCreateRepo}
+              onJumpToPullRequests={jumpToRepoPullRequests}
+              onJumpToBranches={jumpToRepoBranches}
+              onPublishRepo={handlePublishRepo}
+              onTrackRepo={handleTrackRepo}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+            />
+          )}
 
-        {activeTab === 'worktrees' && (
-          <WorktreesView
-            onCreateWorktree={handleCreateWorktree}
-            onCreateFromBranch={handleCreateFromBranch}
-            filterRepo={worktreeFilterRepo}
-            onClearFilter={handleClearWorktreeFilter}
-            onSuccess={success}
-            onError={error}
-            onNavigateToPR={handleNavigateToPR}
-            highlightWorktreePath={highlightWorktreePath}
-            onClearHighlight={() => setHighlightWorktreePath(undefined)}
-          />
-        )}
+          {activeTab === 'worktrees' && (
+            <WorktreesView
+              onCreateWorktree={handleCreateWorktree}
+              onCreateFromBranch={handleCreateFromBranch}
+              filterRepo={worktreeFilterRepo}
+              onClearFilter={handleClearWorktreeFilter}
+              onSuccess={success}
+              onError={error}
+              onNavigateToPR={handleNavigateToPR}
+              highlightWorktreePath={highlightWorktreePath}
+              onClearHighlight={() => setHighlightWorktreePath(undefined)}
+            />
+          )}
 
-        {activeTab === 'branches' && (
-          <BranchesView
-            filterRepo={branchFilterRepo}
-            onClearFilter={handleClearBranchFilter}
-            onCreateWorktree={handleCreateFromBranch}
-            onJumpToWorktree={handleJumpToWorktreeFromBranch}
-            onSuccess={success}
-            onError={error}
-          />
-        )}
+          {activeTab === 'branches' && (
+            <BranchesView
+              filterRepo={branchFilterRepo}
+              onClearFilter={handleClearBranchFilter}
+              onCreateWorktree={handleCreateFromBranch}
+              onJumpToWorktree={handleJumpToWorktreeFromBranch}
+              onSuccess={success}
+              onError={error}
+            />
+          )}
 
-        {activeTab === 'pull-requests' && (
-          <PullRequestsView
-            onCreateWorktree={handleCreateWorktree}
-            onCreateFromBranch={handleCreateFromBranch}
-            onSuccess={success}
-            onError={error}
-            highlightPRNumber={highlightPRNumber}
-            highlightPRRepository={highlightPRRepository}
-            filterRepo={pullRequestFilterRepo}
-            onClearFilter={handleClearPullRequestFilter}
-            onFilterByRepository={handleFilterByRepository}
-          />
-        )}
-      </main>
+          {activeTab === 'pull-requests' && (
+            <PullRequestsView
+              onCreateWorktree={handleCreateWorktree}
+              onCreateFromBranch={handleCreateFromBranch}
+              onSuccess={success}
+              onError={error}
+              highlightPRNumber={highlightPRNumber}
+              highlightPRRepository={highlightPRRepository}
+              filterRepo={pullRequestFilterRepo}
+              onClearFilter={handleClearPullRequestFilter}
+              onFilterByRepository={handleFilterByRepository}
+            />
+          )}
+        </main>
 
-      {/* Create Repo Modal */}
-      <CreateRepoModal
-        isOpen={createRepoModalOpen}
-        onClose={() => setCreateRepoModalOpen(false)}
-        onCreateRepo={handleCreateRepoSubmit}
-        onSuccess={success}
-        onError={error}
-        onNavigateToWorktrees={handleJumpToWorktrees}
-        defaultRepoName={createRepoModalOpen ? generateDefaultRepoName() : undefined}
-      />
+        {/* Create Repo Modal */}
+        <CreateRepoModal
+          isOpen={createRepoModalOpen}
+          onClose={() => setCreateRepoModalOpen(false)}
+          onCreateRepo={handleCreateRepoSubmit}
+          onSuccess={success}
+          onError={error}
+          onNavigateToWorktrees={handleJumpToWorktrees}
+          defaultRepoName={createRepoModalOpen ? generateDefaultRepoName() : undefined}
+        />
 
-      {/* Clone Repo Modal */}
-      <CloneRepoModal
-        isOpen={cloneRepoModalOpen}
-        onClose={() => setCloneRepoModalOpen(false)}
-        onSuccess={success}
-        onError={error}
-        onNavigateToWorktrees={handleJumpToWorktrees}
-      />
+        {/* Clone Repo Modal */}
+        <CloneRepoModal
+          isOpen={cloneRepoModalOpen}
+          onClose={() => setCloneRepoModalOpen(false)}
+          onSuccess={success}
+          onError={error}
+          onNavigateToWorktrees={handleJumpToWorktrees}
+        />
 
-      {/* Create Worktree Modal */}
-      <CreateWorktreeModal
-        isOpen={createWorktreeModalOpen}
-        onClose={() => setCreateWorktreeModalOpen(false)}
-        repoName={selectedRepo}
-        fromBranch={fromBranch}
-        onCreateWorktree={handleCreateWorktreeSubmit}
-        onSuccess={success}
-        onError={error}
-        onNavigateToWorktrees={handleJumpToWorktrees}
-      />
+        {/* Create Worktree Modal */}
+        <CreateWorktreeModal
+          isOpen={createWorktreeModalOpen}
+          onClose={() => setCreateWorktreeModalOpen(false)}
+          repoName={selectedRepo}
+          fromBranch={fromBranch}
+          onCreateWorktree={handleCreateWorktreeSubmit}
+          onSuccess={success}
+          onError={error}
+          onNavigateToWorktrees={handleJumpToWorktrees}
+        />
 
-      {/* Toast Container */}
-      <ToastContainer 
-        toasts={toasts} 
-        onRemoveToast={removeToast} 
-      />
-    </div>
+        {/* Toast Container */}
+        <ToastContainer 
+          toasts={toasts} 
+          onRemoveToast={removeToast} 
+        />
+      </div>
+    </BranchReferenceProvider>
   )
 }
 

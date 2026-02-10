@@ -303,6 +303,15 @@ export async function POST(request: Request) {
         }
       }
       
+      // Configure remote fetch setting for proper branch tracking
+      try {
+        await execCommand(`git -C "${worktreePath}" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"`)
+        await execCommand(`git -C "${worktreePath}" fetch origin`)
+      } catch (remoteConfigError) {
+        console.warn('Failed to configure remote tracking:', remoteConfigError)
+        // Don't fail the worktree creation, just log the warning
+      }
+      
       return NextResponse.json({
         success: true,
         message: `Worktree '${worktreeName}' created successfully from '${startPointToUse}'`,
