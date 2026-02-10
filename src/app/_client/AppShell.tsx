@@ -78,6 +78,10 @@ export function AppShell() {
     jumpToRepoPullRequests(repoName)
   }, [jumpToRepoPullRequests])
 
+  const handleFilterByRepository = useCallback((repoName: string) => {
+    jumpToRepoPullRequests(repoName)
+  }, [jumpToRepoPullRequests])
+
   const handleCreateWorktree = useCallback((repoName: string) => {
     setSelectedRepo(repoName)
     setFromBranch('origin/main') // Default to origin/main
@@ -301,6 +305,7 @@ export function AppShell() {
             highlightPRRepository={highlightPRRepository}
             filterRepo={pullRequestFilterRepo}
             onClearFilter={handleClearPullRequestFilter}
+            onFilterByRepository={handleFilterByRepository}
           />
         )}
       </main>

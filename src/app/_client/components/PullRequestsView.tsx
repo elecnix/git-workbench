@@ -4,7 +4,7 @@ import { PRRow } from './PRRow'
 import { FilterBanner } from './FilterBanner'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
-import { GitPullRequest, CheckCircle, Users, AlertTriangle, XCircle, RefreshCw } from 'lucide-react'
+import { GitPullRequest, CheckCircle, Users, AlertTriangle, XCircle, RefreshCw, Filter } from 'lucide-react'
 import { PRNotification } from '@/types/github'
 import clsx from 'clsx'
 
@@ -20,9 +20,10 @@ interface PullRequestsViewProps {
   highlightPRRepository?: string
   filterRepo?: string
   onClearFilter?: () => void
+  onFilterByRepository?: (repoName: string) => void
 }
 
-export function PullRequestsView({ onCreateWorktree, onCreateFromBranch, onSuccess, onError, highlightPRNumber, highlightPRRepository, filterRepo, onClearFilter }: PullRequestsViewProps) {
+export function PullRequestsView({ onCreateWorktree, onCreateFromBranch, onSuccess, onError, highlightPRNumber, highlightPRRepository, filterRepo, onClearFilter, onFilterByRepository }: PullRequestsViewProps) {
   const { pullRequests, isLoading, error, cached, rateLimited, timestamp, retryInSeconds, errorMessage, updateAvailable, refreshPullRequests } = usePullRequests()
   const [searchQuery, setSearchQuery] = useState('')
   const [groupBy, setGroupBy] = useState<GroupBy>('repository')
@@ -286,10 +287,23 @@ export function PullRequestsView({ onCreateWorktree, onCreateFromBranch, onSucce
             {Object.entries(filteredAndGroupedPRs).map(([groupName, prs]) => (
               <div key={groupName}>
                 {groupBy !== 'none' && (
-                  <div className="px-4 py-2 bg-muted/50 border-b">
-                    <h3 className="font-medium text-sm text-muted-foreground">
-                      {groupName} ({prs.length})
-                    </h3>
+                  <div className="px-4 py-2 bg-muted/50 border-b flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      {groupBy === 'repository' && onFilterByRepository && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onFilterByRepository(groupName)}
+                          title={`Filter by ${groupName}`}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Filter className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <h3 className="font-medium text-sm text-muted-foreground">
+                        {groupName} ({prs.length})
+                      </h3>
+                    </div>
                   </div>
                 )}
                 {prs.map((pr) => {
