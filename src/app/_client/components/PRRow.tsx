@@ -1,10 +1,11 @@
 import React, { memo, useCallback } from 'react'
 import { Button } from './ui/Button'
-import { GitPullRequest, CheckCircle, XCircle, AlertCircle, Clock, Copy, ExternalLink, FolderPlus, Github, Star } from 'lucide-react'
+import { GitPullRequest, CheckCircle, XCircle, AlertCircle, Clock, Copy, ExternalLink, FolderPlus, Github, Star, FolderOpen } from 'lucide-react'
 import { PRNotification } from '@/types/github'
 import { useUserInfo } from '../data/useUserInfo'
 import { useWorktrees } from '../data/useWorktrees'
 import { useWorktreeCreation } from '../hooks/useWorktreeCreation'
+import { CopyLabel } from './CopyLabel'
 import clsx from 'clsx'
 
 interface PRRowProps {
@@ -18,18 +19,6 @@ export const PRRow = memo(function PRRow({ pr, onCopyNumber, onCreateWorktree, o
   const { userInfo } = useUserInfo()
   const { worktrees } = useWorktrees()
   const { handleCreateWorktree } = useWorktreeCreation({ pr, onCreateFromBranch, onCreateWorktree })
-
-  const handleCopyNumber = useCallback(() => {
-    if (onCopyNumber) {
-      onCopyNumber(pr.number)
-    } else {
-      navigator.clipboard.writeText(pr.number.toString())
-    }
-  }, [pr.number, onCopyNumber])
-
-  const handleCopyBranch = useCallback(() => {
-    navigator.clipboard.writeText(pr.headRef)
-  }, [pr.headRef])
 
   const handleOpenPR = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -154,6 +143,11 @@ export const PRRow = memo(function PRRow({ pr, onCopyNumber, onCreateWorktree, o
           {getStatusIcon()}
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
+              <CopyLabel 
+                text={`#${pr.number}`} 
+                title="Copy PR number"
+                className="text-sm text-muted-foreground"
+              />
               <button
                 onClick={handleOpenPR}
                 className="font-medium text-sm truncate text-left hover:text-blue-600 transition-colors"
@@ -169,17 +163,10 @@ export const PRRow = memo(function PRRow({ pr, onCopyNumber, onCreateWorktree, o
               {getReviewStatusIcon()}
             </div>
             <div className="flex items-center space-x-2 text-xs text-muted-foreground mb-2">
-              <span className="font-mono">#{pr.number}</span>
-              <span>•</span>
-              <span className="truncate">{pr.repository}</span>
-              <span>•</span>
-              <button
-                onClick={handleCopyBranch}
-                className="hover:text-foreground transition-colors font-mono"
+              <CopyLabel 
+                text={pr.headRef} 
                 title="Copy branch name"
-              >
-                {pr.headRef}
-              </button>
+              />
               <span>•</span>
               <span title={formatDate(pr.updatedAt)}>
                 {getRelativeTime(pr.updatedAt)}
@@ -208,7 +195,7 @@ export const PRRow = memo(function PRRow({ pr, onCopyNumber, onCreateWorktree, o
               onClick={handleOpenWorktree}
               title="Open worktree"
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
+              <FolderOpen className="w-4 h-4 mr-2" />
               Open
             </Button>
           ) : (
@@ -222,14 +209,6 @@ export const PRRow = memo(function PRRow({ pr, onCopyNumber, onCreateWorktree, o
               Create Worktree
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCopyNumber}
-            title="Copy PR number"
-          >
-            <Copy className="w-4 h-4" />
-          </Button>
           <Button
             variant="ghost"
             size="sm"

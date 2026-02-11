@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useState, useEffect, useRef } from 'react'
 import { Branch } from '@/types/branches'
 import { Button } from './ui/Button'
-import { GitBranch, GitBranchPlus, FolderOpen, MoreHorizontal, Trash2, Globe, Monitor } from 'lucide-react'
+import { GitBranch, GitBranchPlus, FolderOpen, MoreVertical, Trash2, Globe, Monitor } from 'lucide-react'
 import clsx from 'clsx'
 
 interface BranchRowProps {
@@ -149,7 +149,7 @@ export const BranchRow = memo(function BranchRow({
               className="p-1 rounded-md hover:bg-muted transition-colors"
               aria-label="More options"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <MoreVertical className="w-4 h-4" />
             </button>
 
             {showMenu && (

@@ -4,7 +4,7 @@ import { PRRow } from './PRRow'
 import { FilterBanner } from './FilterBanner'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
-import { GitPullRequest, CheckCircle, Users, AlertTriangle, XCircle, RefreshCw, Filter } from 'lucide-react'
+import { GitPullRequest, CheckCircle, Users, AlertTriangle, XCircle, RefreshCw, Filter, FilterX } from 'lucide-react'
 import { PRNotification } from '@/types/github'
 import clsx from 'clsx'
 
@@ -293,11 +293,24 @@ export function PullRequestsView({ onCreateWorktree, onCreateFromBranch, onSucce
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onFilterByRepository(groupName)}
-                          title={`Filter by ${groupName}`}
-                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            if (filterRepo === groupName) {
+                              onClearFilter?.()
+                            } else {
+                              onFilterByRepository(groupName)
+                            }
+                          }}
+                          title={filterRepo === groupName ? `Clear filter for ${groupName}` : `Filter by ${groupName}`}
+                          className={clsx(
+                            'text-muted-foreground hover:text-foreground',
+                            filterRepo === groupName && 'text-foreground'
+                          )}
                         >
-                          <Filter className="w-4 h-4" />
+                          {filterRepo === groupName ? (
+                            <FilterX className="w-4 h-4" />
+                          ) : (
+                            <Filter className="w-4 h-4" />
+                          )}
                         </Button>
                       )}
                       <h3 className="font-medium text-sm text-muted-foreground">

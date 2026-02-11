@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useWorktrees } from '../data/useWorktrees'
 import { useRepos } from '../data/useRepos'
 import { usePullRequests } from '../data/usePullRequests'
@@ -10,7 +11,6 @@ import { Button } from './ui/Button'
 import { GitBranchPlus } from 'lucide-react'
 import { Worktree, WorktreeStatus } from '@/types/worktrees'
 import clsx from 'clsx'
-import { getPendingHighlightWorktreePath, clearPendingHighlightWorktreePath } from '../state/pendingHighlight'
 
 interface WorktreesViewProps {
   onCreateWorktree: (repoName: string) => void
@@ -23,6 +23,8 @@ interface WorktreesViewProps {
 }
 
 export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo, onClearFilter, onSuccess, onError, onNavigateToPR }: WorktreesViewProps) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const { worktrees, isLoading, error, mutate } = useWorktrees()
   const { repos } = useRepos()
   const { pullRequests } = usePullRequests()
@@ -34,20 +36,26 @@ export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo
   const [stateMismatchOpen, setStateMismatchOpen] = useState(false)
   const [mismatches, setMismatches] = useState<any[]>([])
   
-  // Refs for scrolling to highlighted worktree
-  const worktreeRowRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const worktreeRowRefs = useRef<Map<string, HTMLElement>>(new Map())
+  const [highlightWorktreePath, setHighlightWorktreePath] = useState<string | undefined>()
+  
+  // Read worktree highlight from URL parameter
+  useEffect(() => {
+    const encoded = searchParams.get('worktree')
+    const worktreePath = encoded ? decodeURIComponent(encoded) : undefined
+    setHighlightWorktreePath(worktreePath)
+  }, [searchParams])
 
-  // Consume the module-level pending highlight path on mount via lazy initializer.
-  // This runs synchronously during the first render, is immune to StrictMode
-  // double-mounting (React preserves state from the first initializer), and doesn't
-  // depend on any prop from AppShell.
-  const [highlightWorktreePath, setHighlightWorktreePath] = useState<string | undefined>(() => {
-    const pending = getPendingHighlightWorktreePath()
-    if (pending) clearPendingHighlightWorktreePath()
-    return pending
-  })
+  // Clear highlight by updating URL without worktree parameter
+  const clearHighlight = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('worktree')
+    const newUrl = params.toString() ? `/worktrees?${params.toString()}` : '/worktrees'
+    router.push(newUrl, { scroll: false })
+    setHighlightWorktreePath(undefined)
+  }, [searchParams, router])
 
-  // Scroll to highlighted worktree once it appears in the DOM, then auto-clear after 3s
+  // Scroll to highlighted worktree once it appears in the DOM (permanent highlight)
   useEffect(() => {
     if (!highlightWorktreePath) return
 
@@ -57,11 +65,6 @@ export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo
     setTimeout(() => {
       worktreeElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 100)
-
-    const timer = setTimeout(() => {
-      setHighlightWorktreePath(undefined)
-    }, 3000)
-    return () => clearTimeout(timer)
   }, [highlightWorktreePath, worktrees])
 
   // Group worktrees by repository and include all repos
@@ -321,6 +324,7 @@ export function WorktreesView({ onCreateWorktree, onCreateFromBranch, filterRepo
                               allPullRequests={pullRequests}
                               onNavigateToPR={onNavigateToPR}
                               isHighlighted={highlightWorktreePath === worktree.path}
+                              onClearHighlight={clearHighlight}
                             />
                           )
                         })}

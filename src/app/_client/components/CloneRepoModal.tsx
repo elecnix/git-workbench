@@ -143,8 +143,8 @@ export const CloneRepoModal = memo(function CloneRepoModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-background rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-semibold mb-4">Clone Repository</h2>
         <p className="text-muted-foreground mb-4">
           Clone a remote GitHub repository to your local workspace.

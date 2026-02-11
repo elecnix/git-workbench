@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { useBranchReference } from '../contexts/BranchReferenceContext'
@@ -63,14 +63,14 @@ export function CreateWorktreeModal({
     }
   }, [worktreeName, branchName])
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (!isCreating) {
       onClose()
       setWorktreeName('')
       setBranchName('')
       setError('')
     }
-  }
+  }, [isCreating, onClose])
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -130,8 +130,8 @@ export function CreateWorktreeModal({
   const isBranchAutoPopulated = branchName === worktreeName && worktreeName !== ''
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg p-6 max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleClose}>
+      <div className="bg-background rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-semibold mb-4">Create Worktree</h2>
         <p className="text-muted-foreground mb-4">
           Create a new worktree for repository: <strong>{repoName}</strong>

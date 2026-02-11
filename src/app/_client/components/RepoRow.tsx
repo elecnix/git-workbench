@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useState, useEffect, useRef } from 'react'
 import { Repo } from '@/types/repos'
 import { Button } from './ui/Button'
-import { Star, GitBranchPlus, GitBranch, Download, MoreHorizontal, Trash2, GitPullRequest, Upload, Plus } from 'lucide-react'
+import { Star, GitBranchPlus, GitBranch, Download, MoreVertical, Trash2, GitPullRequest, Upload, Plus, FolderTree } from 'lucide-react'
 import { PublishRepoModal } from './PublishRepoModal'
 import clsx from 'clsx'
 
@@ -225,7 +225,7 @@ export const RepoRow = memo(function RepoRow({
             size="sm"
             onClick={handleJumpToWorktrees}
           >
-            <GitBranch className="w-4 h-4 mr-1" />
+            <FolderTree className="w-4 h-4 mr-1" />
             Worktrees
           </Button>
 
@@ -263,7 +263,7 @@ export const RepoRow = memo(function RepoRow({
               className="p-1 rounded-md hover:bg-muted transition-colors"
               aria-label="More options"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <MoreVertical className="w-4 h-4" />
             </button>
 
             {showMenu && (
