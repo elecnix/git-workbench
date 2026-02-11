@@ -90,13 +90,18 @@ Git Workbench is a modern web application that streamlines Git repository manage
 
 ### 🐳 Using Docker Compose (Recommended)
 
-1. **Clone the repository**:
+1. **Create bare repository**:
    ```bash
-   git clone https://github.com/v2nic/git-workbench.git
-   cd git-workbench
+   mkdir -p ~/git-root
+   git clone --bare https://github.com/v2nic/git-workbench.git ~/git-root/git-workbench.git
    ```
 
-2. **Configure your paths**:
+2. **Create main worktree**:
+   ```bash
+   git --git-dir ~/git-root/git-workbench.git worktree add ~/Source/git-workbench/main main
+   ```
+
+3. **Configure your paths**:
    Edit `docker-compose.yml` to mount your source directories:
    ```yaml
    volumes:
@@ -104,12 +109,18 @@ Git Workbench is a modern web application that streamlines Git repository manage
      - /path/to/your/git-root:/home/node/Source/git-root
    ```
 
-3. **Start the application**:
+4. **Start the application**:
    ```bash
+   cd ~/Source/git-workbench/main
    docker compose up -d
    ```
 
-4. **Open your browser** and navigate to `http://localhost:2624`
+5. **Open your browser** and navigate to `http://localhost:2624`
+
+6. **Add repository to Git Workbench**:
+   - In the Git Workbench interface, click "Add Repository"
+   - Enter: `https://github.com/v2nic/git-workbench.git`
+   - The repository will be detected with the existing bare setup
 
 ### 💻 Local Development
 
@@ -355,20 +366,22 @@ The application uses port **2624**, chosen using the telephone keypad standard f
 
 We welcome contributions! Here's how to get started:
 
-### 🎯 Development Workflow
+### 🎯 Development Workflow with Git Workbench
 
 1. **Fork the repository** on GitHub
-2. **Clone your fork** locally:
+2. **Add your fork to Git Workbench**:
    ```bash
-   git clone https://github.com/yourusername/git-workbench.git
-   cd git-workbench
+   # In Git Workbench web interface, click "Add Repository" 
+   # Enter your fork URL: https://github.com/yourusername/git-workbench.git
    ```
-3. **Create a feature branch**:
+3. **Create a feature worktree**:
    ```bash
-   git checkout -b feature/your-feature-name
+   # Use Git Workbench to create a new worktree for your feature
+   # Or via CLI: git --git-dir ~/git-root/git-workbench.git worktree add ~/Source/git-workbench/feature-name feature-name
    ```
 4. **Install dependencies**:
    ```bash
+   cd ~/Source/git-workbench/feature-name
    npm install
    ```
 5. **Make your changes** and add tests for new functionality
@@ -382,8 +395,15 @@ We welcome contributions! Here's how to get started:
    ```bash
    npm run build
    ```
-8. **Commit your changes** with descriptive messages
-9. **Push to your fork** and create a Pull Request
+8. **Commit and push** from your worktree:
+   ```bash
+   git add .
+   git commit -m "feat: add your feature"
+   git push origin feature-name
+   ```
+9. **Create a Pull Request** on GitHub
+
+**Important**: Do NOT use standard `git clone` commands with Git Workbench repositories, as this creates regular clones that won't work properly with Git Workbench's bare repository workflow.
 
 ### 📋 Code Style Guidelines
 
