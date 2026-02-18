@@ -55,30 +55,31 @@ export class TokenBucket {
 
       const waitMs = Math.min(1000, Math.max(50, this.estimateWaitMs(cost, now)))
       
-      // Create a new AbortController for each wait iteration to prevent listener accumulation
-      const waitController = new AbortController()
-      const combinedSignal = signal ? 
-        AbortSignal.any([signal, waitController.signal]) : 
-        waitController.signal
-      
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const t = setTimeout(() => {
-            waitController.abort()
-            resolve()
-          }, waitMs)
-          
-          const onAbort = () => {
+      await new Promise<void>((resolve, reject) => {
+        let onAbort: (() => void) | null = null
+        
+        const t = setTimeout(() => {
+          if (signal && onAbort) {
+            signal.removeEventListener('abort', onAbort)
+          }
+          resolve()
+        }, waitMs)
+        
+        if (signal) {
+          onAbort = () => {
             clearTimeout(t)
             reject(new Error('Aborted'))
           }
           
-          combinedSignal.addEventListener('abort', onAbort, { once: true })
-        })
-      } catch (error) {
-        if (signal?.aborted) throw error
-        // If our own controller aborted, just continue the loop
-      }
+          if (signal.aborted) {
+            clearTimeout(t)
+            reject(new Error('Aborted'))
+            return
+          }
+          
+          signal.addEventListener('abort', onAbort)
+        }
+      })
     }
   }
 }
