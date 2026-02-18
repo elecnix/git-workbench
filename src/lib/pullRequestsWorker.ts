@@ -369,7 +369,7 @@ export class PullRequestsWorker {
     for (const repo of favorites) {
       try {
         const prs = await this.ghJson<any[]>(
-          `gh search prs --repo "${repo}" --limit 50 --json title,url,state,number,closedAt,updatedAt,createdAt,author,repository,isDraft,headRefName`,
+          `gh search prs --repo "${repo}" --limit 50 --json title,url,state,number,closedAt,updatedAt,createdAt,author,repository,isDraft`,
           'favorite_repo',
           signal
         )
@@ -401,7 +401,7 @@ export class PullRequestsWorker {
 
       try {
         const prDetails = await this.ghJson<any[]>(
-          `gh api repos/${repo}/pulls --state all --limit 100 --jq '.[] | select(.number == ${prs.map((p: any) => p.number).join(' or .number == ')})'`,
+          `gh api repos/${repo}/pulls --paginate --jq '.[] | select(.number == ${prs.map((p: any) => p.number).join(' or .number == ')})'`,
           'favorite_repo',
           signal
         )
