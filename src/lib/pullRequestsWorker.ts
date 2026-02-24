@@ -180,7 +180,19 @@ export class PullRequestsWorker {
   private async ghJson<T>(command: string, kind: RequestKind, signal: AbortSignal): Promise<T> {
     await this.bucket.waitAndConsume(REQUEST_COST[kind], signal)
     const { stdout } = await execAsync(command, { timeout: 20000 })
-    return JSON.parse(stdout) as T
+    
+    // Handle empty or malformed responses
+    if (!stdout || stdout.trim() === '') {
+      throw new Error('Empty response from GitHub API')
+    }
+    
+    try {
+      return JSON.parse(stdout) as T
+    } catch (error) {
+      console.error(`Failed to parse JSON from command: ${command}`)
+      console.error(`Raw output: ${stdout}`)
+      throw new Error(`Invalid JSON response: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   private async ghText(command: string, kind: RequestKind, signal: AbortSignal): Promise<string> {
@@ -236,8 +248,12 @@ export class PullRequestsWorker {
   }
 
   private async fetchNotifications(signal: AbortSignal): Promise<PRNotification[]> {
-    const notifications = await this.ghJson<any[]>(`gh api notifications --paginate`, 'notifications', signal)
-    const prNotifs = notifications.filter((n: any) => n.subject?.type === 'PullRequest')
+    try {
+      const notifications = await this.ghJson<any[]>(`gh api notifications --paginate`, 'notifications', signal)
+      
+      // Ensure notifications is an array
+      const notificationsArray = Array.isArray(notifications) ? notifications : []
+      const prNotifs = notificationsArray.filter((n: any) => n.subject?.type === 'PullRequest')
 
     const results: PRNotification[] = []
     for (const n of prNotifs) {
@@ -303,26 +319,34 @@ export class PullRequestsWorker {
     }
 
     return results
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error)
+      return []
+    }
   }
 
   private async fetchUserQueries(username: string, signal: AbortSignal): Promise<PRNotification[]> {
-    const queries = [
-      { q: `state:open author:${username}`, reason: 'author' as const },
-      { q: `state:open review-requested:${username}`, reason: 'review_requested' as const },
-      { q: `state:open reviewed-by:${username}`, reason: 'reviewed' as const },
-      { q: `state:open commenter:${username}`, reason: 'commenter' as const }
-    ]
+    try {
+      const queries = [
+        { q: `state:open author:${username}`, reason: 'author' as const },
+        { q: `state:open review-requested:${username}`, reason: 'review_requested' as const },
+        { q: `state:open reviewed-by:${username}`, reason: 'reviewed' as const },
+        { q: `state:open commenter:${username}`, reason: 'commenter' as const }
+      ]
 
-    const results: PRNotification[] = []
-    for (const { q, reason } of queries) {
-      const prs = await this.ghJson<any[]>(
-        `gh search prs "${q}" --limit 100 --json number,title,state,url,repository,author,updatedAt,createdAt,closedAt,isDraft`,
-        'user_query',
-        signal
-      )
+      const results: PRNotification[] = []
+      for (const { q, reason } of queries) {
+        const prs = await this.ghJson<any[]>(
+          `gh search prs "${q}" --limit 100 --json number,title,state,url,repository,author,updatedAt,createdAt,closedAt,isDraft`,
+          'user_query',
+          signal
+        )
+
+        // Ensure prs is an array
+        const prsArray = Array.isArray(prs) ? prs : []
 
       // Fetch detailed PR info for each PR to get the branch name
-      for (const pr of prs) {
+      for (const pr of prsArray) {
         const state = typeof pr.state === 'string' ? pr.state.toLowerCase() : 'open'
         if (state !== 'open') {
           continue
@@ -360,32 +384,40 @@ export class PullRequestsWorker {
       seen.add(key)
       return true
     })
+    } catch (error) {
+      console.error('Failed to fetch user queries:', error)
+      return []
+    }
   }
 
   private async fetchFavorites(favorites: string[], signal: AbortSignal): Promise<PRNotification[]> {
-    const results: PRNotification[] = []
-    const allPRs: Array<{ pr: any; repo: string }> = []
+    try {
+      const results: PRNotification[] = []
+      const allPRs: Array<{ pr: any; repo: string }> = []
 
-    for (const repo of favorites) {
-      try {
-        const prs = await this.ghJson<any[]>(
-          `gh search prs --repo "${repo}" --limit 50 --json title,url,state,number,closedAt,updatedAt,createdAt,author,repository,isDraft`,
-          'favorite_repo',
-          signal
-        )
-        
-        for (const pr of prs) {
-          allPRs.push({ pr, repo })
+      for (const repo of favorites) {
+        try {
+          const prs = await this.ghJson<any[]>(
+            `gh search prs --repo "${repo}" --limit 50 --json title,url,state,number,closedAt,updatedAt,createdAt,author,repository,isDraft`,
+            'favorite_repo',
+            signal
+          )
+
+          // Ensure prs is an array
+          const prsArray = Array.isArray(prs) ? prs : []
+          
+          for (const pr of prsArray) {
+            allPRs.push({ pr, repo })
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          if (msg.includes('cannot be searched') || msg.includes('do not have permission') || msg.includes('Invalid search query')) {
+            console.warn(`Skipping inaccessible favorite repo: ${repo} - ${msg}`)
+            continue
+          }
+          throw err
         }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        if (msg.includes('cannot be searched') || msg.includes('do not have permission') || msg.includes('Invalid search query')) {
-          console.warn(`Skipping inaccessible favorite repo: ${repo} - ${msg}`)
-          continue
-        }
-        throw err
       }
-    }
 
     const prsByRepo = new Map<string, any[]>()
     for (const { pr, repo } of allPRs) {
@@ -400,13 +432,15 @@ export class PullRequestsWorker {
       if (!prNumbers) continue
 
       try {
-        const prDetails = await this.ghJson<any[]>(
+        const prDetails = await this.ghJson<any>(
           `gh api repos/${repo}/pulls --paginate --jq '.[] | select(.number == ${prs.map((p: any) => p.number).join(' or .number == ')})'`,
           'favorite_repo',
           signal
         )
 
-        const detailsMap = new Map(prDetails.map(pr => [pr.number, pr]))
+        // Ensure prDetails is an array
+        const detailsArray = Array.isArray(prDetails) ? prDetails : [prDetails].filter(Boolean)
+        const detailsMap = new Map(detailsArray.map(pr => [pr.number, pr]))
 
         for (const pr of prs) {
           const details = detailsMap.get(pr.number)
@@ -433,6 +467,10 @@ export class PullRequestsWorker {
     }
 
     return results
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error)
+      return []
+    }
   }
 
   private async loop(signal: AbortSignal) {
